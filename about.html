@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>About — Traders.io</title>
+<meta name="description" content="Traders.io is a forex trading education platform. Learn how we're helping traders improve their technical analysis through battle-based learning.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#05080e;--surface:#0a0f1a;--border:#131f35;
+  --up:#00e676;--down:#ff3d5a;--gold:#f5c842;--accent:#0ea5e9;
+  --text:#e8f0fe;--muted:#3d5473;
+  --display:'Bebas Neue',sans-serif;--body:'Instrument Sans',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:var(--body);font-size:15px;line-height:1.6;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(14,165,233,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(14,165,233,0.03) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0;}
+
+nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 40px;height:64px;background:rgba(5,8,14,0.85);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);}
+.nav-logo{font-family:var(--display);font-size:28px;letter-spacing:0.1em;color:var(--accent);text-decoration:none;}
+.nav-links{display:flex;gap:32px;list-style:none;}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:13px;font-weight:500;letter-spacing:0.05em;text-transform:uppercase;transition:color 0.2s;}
+.nav-links a:hover{color:var(--text);}
+.nav-links a.active{color:var(--accent);}
+.nav-cta{background:var(--accent);color:#000 !important;padding:8px 20px;border-radius:6px;font-weight:700 !important;}
+@media(max-width:768px){nav{padding:0 20px;}.nav-links{gap:16px;}.nav-links li:not(:last-child):not(:nth-last-child(2)){display:none;}}
+
+.page-header{position:relative;z-index:1;padding:140px 24px 80px;text-align:center;}
+.page-label{font-size:11px;letter-spacing:0.25em;text-transform:uppercase;color:var(--accent);margin-bottom:16px;display:block;}
+.page-title{font-family:var(--display);font-size:clamp(64px,10vw,120px);line-height:0.9;letter-spacing:0.02em;}
+.page-sub{font-size:18px;color:var(--muted);max-width:560px;margin:24px auto 0;line-height:1.7;}
+
+.section{position:relative;z-index:1;padding:80px 24px;}
+.section-inner{max-width:900px;margin:0 auto;}
+.section-inner.wide{max-width:1100px;}
+
+h2{font-family:var(--display);font-size:clamp(40px,5vw,64px);line-height:0.95;letter-spacing:0.02em;margin-bottom:32px;}
+h3{font-family:var(--display);font-size:28px;letter-spacing:0.05em;margin-bottom:12px;}
+p{color:var(--muted);line-height:1.8;margin-bottom:20px;}
+p:last-child{margin-bottom:0;}
+p strong{color:var(--text);}
+
+.highlight-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:40px;margin:40px 0;}
+.highlight-box.accent{border-color:rgba(14,165,233,0.3);background:rgba(14,165,233,0.05);}
+
+.mission-grid{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center;margin:60px 0;}
+@media(max-width:640px){.mission-grid{grid-template-columns:1fr;}}
+
+.big-quote{font-family:var(--display);font-size:clamp(32px,4vw,52px);line-height:1.1;letter-spacing:0.02em;color:var(--text);border-left:4px solid var(--up);padding-left:32px;margin:48px 0;}
+
+.values-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:24px;margin-top:40px;}
+.value-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px;transition:border-color 0.2s;}
+.value-card:hover{border-color:rgba(14,165,233,0.3);}
+.value-icon{font-size:28px;margin-bottom:12px;}
+.value-card h3{font-size:20px;margin-bottom:8px;}
+.value-card p{font-size:13px;margin:0;}
+
+.team-note{background:linear-gradient(135deg,rgba(0,230,118,0.05),rgba(14,165,233,0.05));border:1px solid var(--border);border-radius:12px;padding:40px;text-align:center;margin-top:60px;}
+.team-note h3{font-family:var(--display);font-size:36px;margin-bottom:12px;color:var(--up);}
+.team-note p{max-width:480px;margin:0 auto 24px;}
+
+.btn-primary{background:var(--up);color:#000;padding:14px 32px;border-radius:8px;font-family:var(--display);font-size:20px;letter-spacing:0.05em;text-decoration:none;transition:all 0.2s;display:inline-block;}
+.btn-primary:hover{background:#00ff8a;transform:translateY(-2px);}
+
+footer{position:relative;z-index:1;border-top:1px solid var(--border);padding:60px 40px 40px;}
+.footer-inner{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr auto;gap:40px;align-items:start;}
+.footer-brand .logo{font-family:var(--display);font-size:32px;letter-spacing:0.1em;color:var(--accent);display:block;margin-bottom:12px;}
+.footer-brand p{font-size:13px;color:var(--muted);max-width:320px;line-height:1.7;}
+.footer-links{display:flex;gap:48px;}
+.footer-col h4{font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);margin-bottom:16px;}
+.footer-col a{display:block;color:var(--muted);text-decoration:none;font-size:14px;margin-bottom:10px;transition:color 0.2s;}
+.footer-col a:hover{color:var(--text);}
+.footer-bottom{max-width:1100px;margin:40px auto 0;padding-top:24px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted);flex-wrap:wrap;gap:12px;}
+@media(max-width:768px){.footer-inner{grid-template-columns:1fr;}.footer-links{flex-direction:column;gap:24px;}}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">TRADERS.IO</a>
+  <ul class="nav-links">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="about.html" class="active">About</a></li>
+    <li><a href="contact.html">Contact</a></li>
+    <li><a href="battle.html" class="nav-cta">Play Free</a></li>
+  </ul>
+</nav>
+
+<div class="page-header">
+  <span class="page-label">// About Traders.io</span>
+  <h1 class="page-title">WE BUILT<br>THE GAME<br>WE WANTED</h1>
+  <p class="page-sub">A trading education platform that actually works — because learning by doing beats learning by watching.</p>
+</div>
+
+<section class="section">
+  <div class="section-inner">
+
+    <div class="mission-grid">
+      <div>
+        <h2>OUR MISSION</h2>
+        <p><strong>Most trading education is broken.</strong> You watch videos, read books, maybe open a demo account — and then freeze when real money is on the line because you've never actually been forced to make a decision under pressure.</p>
+        <p>Traders.io exists to fix that. We believe the fastest way to develop pattern recognition is through high-volume, low-stakes repetition. Thousands of setups. Immediate feedback. Real historical data.</p>
+        <p>Think of it as <strong>Duolingo for technical analysis</strong> — but with the competitive edge of a trading floor.</p>
+      </div>
+      <div class="highlight-box accent">
+        <h3>THE CORE INSIGHT</h3>
+        <p>A professional trader has seen thousands of setups. A beginner has seen dozens. The gap isn't intelligence — it's repetitions.</p>
+        <p>One battle on Traders.io = one real market setup analyzed and traded. Do 50 battles in a week. That's 50 more setups than most traders see in a month on a demo account.</p>
+      </div>
+    </div>
+
+    <div class="big-quote">
+      "The best traders didn't study the market.<br>They lived in it — one trade at a time."
+    </div>
+
+    <h2>HOW WE'RE DIFFERENT</h2>
+    <p><strong>Demo accounts are passive.</strong> You open trades whenever you feel like it, close them when it gets uncomfortable, and never face the pressure of committing under a timer. You learn nothing about discipline or decision-making under uncertainty.</p>
+    <p><strong>Traders.io is active.</strong> You get 15 seconds to analyse a real chart. Then 10 seconds to make your call. Then you watch the market replay bar by bar. Win or lose, you get instant feedback — and you do it again immediately. The feedback loop that takes months on a demo account takes minutes here.</p>
+
+    <div class="values-grid">
+      <div class="value-card">
+        <div class="value-icon">📊</div>
+        <h3>REAL DATA</h3>
+        <p>Every chart is real historical forex data. No simulated prices, no cherry-picked scenarios. The market as it actually happened.</p>
+      </div>
+      <div class="value-card">
+        <div class="value-icon">⚡</div>
+        <h3>FAST FEEDBACK</h3>
+        <p>Each battle takes under 60 seconds. Immediate outcome, immediate lesson. No waiting for positions to resolve over days.</p>
+      </div>
+      <div class="value-card">
+        <div class="value-icon">🎯</div>
+        <h3>PRESSURE TRAINING</h3>
+        <p>The timer forces you to commit. That's intentional — real trading requires decisions under time pressure. We train that muscle.</p>
+      </div>
+      <div class="value-card">
+        <div class="value-icon">🏆</div>
+        <h3>COMPETITIVE EDGE</h3>
+        <p>Leaderboards and PvP battles create stakes without real money. You play to win, which means you actually think before acting.</p>
+      </div>
+    </div>
+
+    <div class="team-note">
+      <h3>BUILT BY TRADERS</h3>
+      <p>Traders.io was founded by Joey Hartman, a forex day trader who wanted a better way to develop and test pattern recognition without risking capital. Based in the Netherlands.</p>
+      <p style="margin-bottom:24px">The platform is in active development. We're building in public, listening to our community, and shipping fast.</p>
+      <a href="contact.html" class="btn-primary">GET IN TOUCH</a>
+    </div>
+
+  </div>
+</section>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <span class="logo">TRADERS.IO</span>
+      <p>A forex trading education platform where traders battle in real-time price prediction challenges.</p>
+    </div>
+    <div class="footer-links">
+      <div class="footer-col">
+        <h4>Platform</h4>
+        <a href="battle.html">Battle Arena</a>
+        <a href="about.html">How It Works</a>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <a href="about.html">About Us</a>
+        <a href="contact.html">Contact</a>
+        <a href="privacy.html">Privacy Policy</a>
+        <a href="terms.html">Terms of Use</a>
+      </div>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>© 2025 Traders.io. All rights reserved.</span>
+    <span>Contact: <a href="mailto:joey@traders.io" style="color:var(--accent);text-decoration:none">joey@traders.io</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -3,2002 +3,618 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Traders.io — Battle Arena</title>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+<title>Traders.io — Battle Arena | Forex Trading Education</title>
+<meta name="description" content="Traders.io is a forex trading education platform where traders battle in real-time price prediction challenges. Improve your technical analysis through competition.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #080c12;
-  --surface: #0d1420;
-  --surface2: #111d2e;
-  --border: #1a2840;
-  --border2: #243550;
-  --up: #00e676;
-  --down: #ff3d5a;
-  --gold: #ffd740;
-  --accent: #00b4ff;
-  --text: #e4eeff;
-  --muted: #4a6080;
-  --font-display: 'Barlow Condensed', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --bg:      #05080e;
+  --surface: #0a0f1a;
+  --border:  #131f35;
+  --up:      #00e676;
+  --down:    #ff3d5a;
+  --gold:    #f5c842;
+  --accent:  #0ea5e9;
+  --text:    #e8f0fe;
+  --muted:   #3d5473;
+  --display: 'Bebas Neue', sans-serif;
+  --body:    'Instrument Sans', sans-serif;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; }
+html { scroll-behavior: smooth; }
 
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: var(--font-mono);
-  font-size: 13px;
-  line-height: 1.5;
+  font-family: var(--body);
+  font-size: 15px;
+  line-height: 1.6;
   overflow-x: hidden;
 }
 
-/* Scanline overlay */
+/* Grid background */
 body::before {
   content: '';
-  position: fixed;
-  inset: 0;
-  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
-  pointer-events: none;
-  z-index: 9999;
-}
-
-/* ── SCREENS ── */
-.screen { display: none; min-height: 100vh; }
-.screen.active { display: flex; flex-direction: column; }
-
-/* ══════════════════════════════════════
-   LANDING SCREEN
-══════════════════════════════════════ */
-#screen-landing {
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-  padding: 24px;
-}
-
-/* Animated grid bg */
-#screen-landing::after {
-  content: '';
-  position: absolute;
-  inset: -50%;
+  position: fixed; inset: 0;
   background-image:
-    linear-gradient(rgba(0,180,255,0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,180,255,0.04) 1px, transparent 1px);
-  background-size: 60px 60px;
-  animation: gridScroll 20s linear infinite;
-  pointer-events: none;
+    linear-gradient(rgba(14,165,233,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(14,165,233,0.03) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none; z-index: 0;
 }
 
-@keyframes gridScroll {
-  from { transform: translate(0,0); }
-  to { transform: translate(60px, 60px); }
-}
-
-.landing-inner {
-  position: relative;
-  z-index: 1;
-  text-align: center;
-  max-width: 560px;
-}
-
-.logo {
-  font-family: var(--font-display);
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: 0.3em;
-  color: var(--accent);
-  text-transform: uppercase;
-  margin-bottom: 32px;
-  opacity: 0;
-  animation: fadeUp 0.6s 0.1s forwards;
-}
-
-.hero-title {
-  font-family: var(--font-display);
-  font-size: clamp(64px, 14vw, 110px);
-  font-weight: 900;
-  line-height: 0.85;
-  letter-spacing: -0.01em;
-  margin-bottom: 20px;
-  opacity: 0;
-  animation: fadeUp 0.6s 0.3s forwards;
-}
-
-.hero-title .up { color: var(--up); }
-.hero-title .vs { font-size: 0.4em; color: var(--muted); display: block; margin: 8px 0; }
-.hero-title .down { color: var(--down); }
-
-.hero-sub {
-  font-size: 13px;
-  color: var(--muted);
-  margin-bottom: 36px;
-  line-height: 1.8;
-  opacity: 0;
-  animation: fadeUp 0.6s 0.5s forwards;
-}
-
-/* Live ticker */
-.ticker-bar {
-  display: flex;
-  gap: 20px;
-  justify-content: center;
-  margin-bottom: 36px;
-  flex-wrap: wrap;
-  opacity: 0;
-  animation: fadeUp 0.6s 0.7s forwards;
-}
-
-.ticker-item {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 8px 14px;
-  font-size: 11px;
-  min-width: 110px;
-  text-align: center;
-}
-
-.ticker-pair { color: var(--muted); margin-bottom: 2px; }
-.ticker-price { font-size: 14px; font-weight: 700; }
-.ticker-change { font-size: 10px; margin-top: 2px; }
-.ticker-change.up { color: var(--up); }
-.ticker-change.down { color: var(--down); }
-
-/* Email form */
-.email-form {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-  opacity: 0;
-  animation: fadeUp 0.6s 0.9s forwards;
-}
-
-.email-form input {
-  flex: 1;
-  background: var(--surface);
-  border: 1px solid var(--border2);
-  border-radius: 8px;
-  padding: 14px 16px;
-  color: var(--text);
-  font-family: var(--font-mono);
-  font-size: 13px;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.email-form input:focus { border-color: var(--accent); }
-.email-form input::placeholder { color: var(--muted); }
-
-.btn {
-  padding: 14px 24px;
-  border-radius: 8px;
-  font-family: var(--font-display);
-  font-size: 16px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  cursor: pointer;
-  border: none;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-
-.btn-primary {
-  background: var(--up);
-  color: #000;
-}
-.btn-primary:hover { background: #00ff8a; transform: translateY(-1px); box-shadow: 0 4px 20px rgba(0,230,118,0.3); }
-
-.btn-accent {
-  background: var(--accent);
-  color: #000;
-}
-.btn-accent:hover { background: #33c4ff; transform: translateY(-1px); box-shadow: 0 4px 20px rgba(0,180,255,0.3); }
-
-.btn-ghost {
-  background: transparent;
-  color: var(--text);
-  border: 1px solid var(--border2);
-}
-.btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
-
-.btn-up { background: var(--up); color: #000; font-size: 20px; padding: 18px 32px; }
-.btn-up:hover { background: #00ff8a; transform: scale(1.03); box-shadow: 0 6px 30px rgba(0,230,118,0.4); }
-.btn-up:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
-
-.btn-down { background: var(--down); color: #fff; font-size: 20px; padding: 18px 32px; }
-.btn-down:hover { background: #ff6070; transform: scale(1.03); box-shadow: 0 6px 30px rgba(255,61,90,0.4); }
-.btn-down:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
-
-.skip-link {
-  font-size: 11px;
-  color: var(--muted);
-  cursor: pointer;
-  text-decoration: underline;
-  opacity: 0;
-  animation: fadeUp 0.6s 1.1s forwards;
-}
-.skip-link:hover { color: var(--text); }
-
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* ══════════════════════════════════════
-   LOBBY SCREEN
-══════════════════════════════════════ */
-#screen-lobby {
-  padding: 0;
-}
-
-.top-nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 24px;
+/* ── NAV ── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 40px; height: 64px;
+  background: rgba(5,8,14,0.85);
+  backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border);
-  background: var(--surface);
-  flex-shrink: 0;
 }
 
 .nav-logo {
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 900;
-  letter-spacing: 0.15em;
-  color: var(--accent);
+  font-family: var(--display);
+  font-size: 28px; letter-spacing: 0.1em;
+  color: var(--accent); text-decoration: none;
+  display: flex; align-items: center; gap: 8px;
 }
 
-.nav-stats {
-  display: flex;
-  gap: 20px;
-  font-size: 11px;
-  color: var(--muted);
+.nav-logo .dot { color: var(--up); font-size: 10px; }
+
+.nav-links {
+  display: flex; gap: 32px; list-style: none;
 }
 
-.nav-stat strong { color: var(--text); }
+.nav-links a {
+  color: var(--muted); text-decoration: none;
+  font-size: 13px; font-weight: 500; letter-spacing: 0.05em;
+  text-transform: uppercase; transition: color 0.2s;
+}
+.nav-links a:hover { color: var(--text); }
+.nav-links a.active { color: var(--accent); }
 
-.lobby-body {
-  flex: 1;
-  display: grid;
-  grid-template-columns: 1fr 320px;
-  gap: 0;
+.nav-cta {
+  background: var(--accent); color: #000 !important;
+  padding: 8px 20px; border-radius: 6px;
+  font-weight: 700 !important;
+}
+.nav-cta:hover { background: #38bdf8 !important; color: #000 !important; }
+
+@media (max-width: 768px) {
+  nav { padding: 0 20px; }
+  .nav-links { gap: 16px; }
+  .nav-links li:not(:last-child):not(:nth-last-child(2)) { display: none; }
+}
+
+/* ── HERO ── */
+.hero {
+  position: relative; z-index: 1;
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 120px 24px 80px;
+  text-align: center;
   overflow: hidden;
+}
+
+/* Radial glow */
+.hero::after {
+  content: '';
+  position: absolute;
+  top: 20%; left: 50%;
+  transform: translateX(-50%);
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(14,165,233,0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(14,165,233,0.1); border: 1px solid rgba(14,165,233,0.3);
+  border-radius: 999px; padding: 6px 16px;
+  font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 32px;
+  animation: fadeUp 0.6s 0.1s both;
+}
+
+.hero-badge .pulse {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--up);
+  animation: glow 2s ease-in-out infinite;
+}
+
+@keyframes glow {
+  0%,100% { box-shadow: 0 0 0 0 rgba(0,230,118,0.4); }
+  50%      { box-shadow: 0 0 0 6px rgba(0,230,118,0); }
+}
+
+h1 {
+  font-family: var(--display);
+  font-size: clamp(72px, 12vw, 140px);
+  line-height: 0.9; letter-spacing: 0.02em;
+  margin-bottom: 24px;
+  animation: fadeUp 0.6s 0.3s both;
+}
+
+h1 .line1 { display: block; color: var(--up); }
+h1 .line2 { display: block; font-size: 0.35em; color: var(--muted); letter-spacing: 0.15em; margin: 12px 0; }
+h1 .line3 { display: block; color: var(--down); }
+
+.hero-sub {
+  font-size: clamp(16px, 2vw, 20px);
+  color: var(--muted); max-width: 520px;
+  margin: 0 auto 48px;
+  animation: fadeUp 0.6s 0.5s both;
+}
+
+.hero-cta {
+  display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;
+  animation: fadeUp 0.6s 0.7s both;
+  margin-bottom: 80px;
+}
+
+.btn-primary {
+  background: var(--up); color: #000;
+  padding: 16px 36px; border-radius: 8px;
+  font-family: var(--display); font-size: 22px;
+  letter-spacing: 0.05em; text-decoration: none;
+  transition: all 0.2s; display: inline-block;
+  border: none; cursor: pointer;
+}
+.btn-primary:hover { background: #00ff8a; transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,230,118,0.3); }
+
+.btn-secondary {
+  background: transparent; color: var(--text);
+  padding: 16px 36px; border-radius: 8px;
+  font-family: var(--display); font-size: 22px;
+  letter-spacing: 0.05em; text-decoration: none;
+  border: 1px solid var(--border); transition: all 0.2s;
+  display: inline-block;
+}
+.btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── STATS STRIP ── */
+.stats-strip {
+  position: relative; z-index: 1;
+  display: flex; justify-content: center; flex-wrap: wrap; gap: 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  animation: fadeUp 0.6s 0.9s both;
+}
+
+.stat-item {
+  padding: 32px 48px; text-align: center;
+  border-right: 1px solid var(--border);
+  flex: 1; min-width: 160px;
+}
+.stat-item:last-child { border-right: none; }
+
+.stat-num {
+  font-family: var(--display);
+  font-size: 48px; line-height: 1; letter-spacing: 0.02em;
+  color: var(--text); display: block;
+}
+.stat-num.green { color: var(--up); }
+.stat-num.blue  { color: var(--accent); }
+.stat-num.gold  { color: var(--gold); }
+
+.stat-label {
+  font-size: 11px; letter-spacing: 0.15em;
+  text-transform: uppercase; color: var(--muted);
+  margin-top: 4px; display: block;
+}
+
+/* ── HOW IT WORKS ── */
+.section {
+  position: relative; z-index: 1;
+  padding: 100px 24px;
+}
+
+.section-inner { max-width: 1100px; margin: 0 auto; }
+
+.section-label {
+  font-size: 11px; letter-spacing: 0.25em;
+  text-transform: uppercase; color: var(--accent);
+  margin-bottom: 16px; display: block;
+}
+
+.section-title {
+  font-family: var(--display);
+  font-size: clamp(48px, 6vw, 80px);
+  line-height: 0.9; letter-spacing: 0.02em;
+  margin-bottom: 64px;
+}
+
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 2px; background: var(--border);
+  border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+}
+
+.step {
+  background: var(--bg); padding: 40px 32px;
+  position: relative; overflow: hidden;
+  transition: background 0.2s;
+}
+.step:hover { background: var(--surface); }
+
+.step-num {
+  font-family: var(--display); font-size: 80px;
+  line-height: 1; color: var(--border);
+  margin-bottom: 20px; display: block;
+  transition: color 0.2s;
+}
+.step:hover .step-num { color: rgba(14,165,233,0.3); }
+
+.step-icon { font-size: 32px; margin-bottom: 16px; display: block; }
+
+.step h3 {
+  font-family: var(--display); font-size: 28px;
+  letter-spacing: 0.05em; margin-bottom: 12px;
+}
+
+.step p { font-size: 14px; color: var(--muted); line-height: 1.7; }
+
+/* ── FEATURES ── */
+.features-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+}
+
+.feature {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 32px;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.feature:hover { border-color: rgba(14,165,233,0.3); transform: translateY(-4px); }
+
+.feature-icon { font-size: 32px; margin-bottom: 16px; }
+.feature h3 { font-family: var(--display); font-size: 24px; letter-spacing: 0.05em; margin-bottom: 8px; }
+.feature p  { font-size: 14px; color: var(--muted); line-height: 1.7; }
+
+/* ── PAIRS TICKER ── */
+.pairs-section {
+  position: relative; z-index: 1;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 60px 24px;
+  overflow: hidden;
+}
+
+.pairs-scroll {
+  display: flex; gap: 24px;
+  animation: scrollLeft 30s linear infinite;
+  width: max-content;
+}
+@keyframes scrollLeft {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+.pair-card {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 8px; padding: 16px 24px;
+  min-width: 160px; text-align: center;
+  flex-shrink: 0;
+}
+.pair-name  { font-size: 12px; color: var(--muted); margin-bottom: 4px; letter-spacing: 0.05em; }
+.pair-price { font-family: var(--display); font-size: 24px; letter-spacing: 0.02em; }
+.pair-chg   { font-size: 11px; margin-top: 2px; }
+.pair-chg.up   { color: var(--up); }
+.pair-chg.down { color: var(--down); }
+
+/* ── CTA SECTION ── */
+.cta-section {
+  position: relative; z-index: 1;
+  padding: 120px 24px; text-align: center;
+}
+
+.cta-box {
+  max-width: 700px; margin: 0 auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px; padding: 80px 60px;
+  position: relative; overflow: hidden;
+}
+
+.cta-box::before {
+  content: '';
+  position: absolute; top: -100px; left: 50%;
+  transform: translateX(-50%);
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, rgba(0,230,118,0.08), transparent 70%);
+  pointer-events: none;
+}
+
+.cta-box h2 {
+  font-family: var(--display);
+  font-size: clamp(48px, 7vw, 80px);
+  line-height: 0.9; margin-bottom: 20px;
+}
+
+.cta-box p { font-size: 16px; color: var(--muted); margin-bottom: 40px; }
+
+.email-row {
+  display: flex; gap: 12px; max-width: 440px; margin: 0 auto;
+}
+.email-row input {
+  flex: 1; background: var(--bg);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 14px 16px; color: var(--text);
+  font-family: var(--body); font-size: 14px; outline: none;
+  transition: border-color 0.2s;
+}
+.email-row input:focus { border-color: var(--accent); }
+.email-row input::placeholder { color: var(--muted); }
+
+/* ── FOOTER ── */
+footer {
+  position: relative; z-index: 1;
+  border-top: 1px solid var(--border);
+  padding: 60px 40px 40px;
+}
+
+.footer-inner {
+  max-width: 1100px; margin: 0 auto;
+  display: grid; grid-template-columns: 1fr auto;
+  gap: 40px; align-items: start;
+}
+
+.footer-brand .logo {
+  font-family: var(--display); font-size: 32px;
+  letter-spacing: 0.1em; color: var(--accent);
+  display: block; margin-bottom: 12px;
+}
+.footer-brand p { font-size: 13px; color: var(--muted); max-width: 320px; line-height: 1.7; }
+
+.footer-links {
+  display: flex; gap: 48px;
+}
+
+.footer-col h4 {
+  font-size: 11px; letter-spacing: 0.2em;
+  text-transform: uppercase; color: var(--muted);
+  margin-bottom: 16px;
+}
+.footer-col a {
+  display: block; color: var(--muted);
+  text-decoration: none; font-size: 14px;
+  margin-bottom: 10px; transition: color 0.2s;
+}
+.footer-col a:hover { color: var(--text); }
+
+.footer-bottom {
+  max-width: 1100px; margin: 40px auto 0;
+  padding-top: 24px; border-top: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 12px; color: var(--muted); flex-wrap: wrap; gap: 12px;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 @media (max-width: 768px) {
-  .lobby-body { grid-template-columns: 1fr; }
-  .leaderboard-panel { display: none; }
+  .footer-inner { grid-template-columns: 1fr; }
+  .footer-links { flex-direction: column; gap: 24px; }
+  .stat-item { padding: 24px 20px; }
+  .email-row { flex-direction: column; }
+  .cta-box { padding: 48px 28px; }
+  .step { padding: 28px 24px; }
 }
-
-.lobby-main {
-  padding: 28px 28px;
-  overflow-y: auto;
-}
-
-.section-heading {
-  font-family: var(--font-display);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: 16px;
-}
-
-/* Mode cards */
-.mode-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 32px;
-}
-
-@media (max-width: 500px) { .mode-grid { grid-template-columns: 1fr; } }
-
-.mode-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 20px;
-  cursor: pointer;
-  transition: all 0.2s;
-  position: relative;
-  overflow: hidden;
-}
-
-.mode-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.mode-card.mode-1v1::before { background: linear-gradient(135deg, rgba(0,230,118,0.06), transparent); }
-.mode-card.mode-group::before { background: linear-gradient(135deg, rgba(0,180,255,0.06), transparent); }
-
-.mode-card:hover { border-color: var(--border2); transform: translateY(-2px); }
-.mode-card:hover::before { opacity: 1; }
-
-.mode-icon { font-size: 28px; margin-bottom: 10px; }
-.mode-name {
-  font-family: var(--font-display);
-  font-size: 22px;
-  font-weight: 800;
-  margin-bottom: 4px;
-}
-.mode-desc { font-size: 11px; color: var(--muted); line-height: 1.6; }
-.mode-players {
-  margin-top: 10px;
-  font-size: 10px;
-  color: var(--up);
-}
-
-/* Pair selector */
-.pair-grid {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 32px;
-}
-
-.pair-btn {
-  padding: 8px 16px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.pair-btn:hover, .pair-btn.active {
-  background: var(--surface2);
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-/* Timeframe */
-.tf-grid {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 32px;
-}
-
-.tf-btn {
-  flex: 1;
-  padding: 10px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.15s;
-  text-align: center;
-}
-
-.tf-btn:hover, .tf-btn.active {
-  background: var(--surface2);
-  border-color: var(--gold);
-  color: var(--gold);
-}
-
-/* Leaderboard panel */
-.leaderboard-panel {
-  border-left: 1px solid var(--border);
-  background: var(--surface);
-  overflow-y: auto;
-  padding: 20px;
-}
-
-.lb-title {
-  font-family: var(--font-display);
-  font-size: 18px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  margin-bottom: 16px;
-  color: var(--gold);
-}
-
-.lb-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.lb-row:last-child { border-bottom: none; }
-
-.lb-rank {
-  font-family: var(--font-display);
-  font-size: 18px;
-  font-weight: 900;
-  width: 28px;
-  text-align: center;
-  flex-shrink: 0;
-}
-
-.rank-1 { color: var(--gold); }
-.rank-2 { color: #c0c0c0; }
-.rank-3 { color: #cd7f32; }
-.rank-other { color: var(--muted); }
-
-.lb-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  flex-shrink: 0;
-}
-
-.lb-info { flex: 1; min-width: 0; }
-.lb-name { font-size: 12px; font-weight: 700; truncate: ellipsis; overflow: hidden; white-space: nowrap; }
-.lb-wins { font-size: 10px; color: var(--muted); }
-
-.lb-pct {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--up);
-  flex-shrink: 0;
-}
-
-/* ══════════════════════════════════════
-   BATTLE SCREEN
-══════════════════════════════════════ */
-#screen-battle {
-  padding: 0;
-}
-
-.battle-nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 20px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
-  flex-shrink: 0;
-}
-
-.battle-pair-display {
-  font-family: var(--font-display);
-  font-size: 22px;
-  font-weight: 900;
-  letter-spacing: 0.05em;
-}
-
-.battle-timer {
-  font-family: var(--font-display);
-  font-size: 36px;
-  font-weight: 900;
-  letter-spacing: 0.05em;
-  min-width: 80px;
-  text-align: center;
-  transition: color 0.3s;
-}
-
-.timer-normal { color: var(--text); }
-.timer-warning { color: var(--gold); }
-.timer-danger { color: var(--down); animation: pulse 0.5s ease-in-out infinite; }
-
-@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
-
-.battle-phase {
-  font-size: 11px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--muted);
-  text-align: right;
-}
-
-.battle-body {
-  flex: 1;
-  display: grid;
-  grid-template-rows: auto 1fr auto;
-  overflow: hidden;
-}
-
-/* Opponent bar */
-.opponent-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 20px;
-  background: var(--surface2);
-  border-bottom: 1px solid var(--border);
-  font-size: 12px;
-}
-
-.opp-info { display: flex; align-items: center; gap: 10px; }
-.opp-avatar { font-size: 18px; }
-.opp-name { font-weight: 700; }
-.opp-record { color: var(--muted); font-size: 10px; }
-.opp-status { font-size: 11px; color: var(--muted); }
-.opp-status.voted { color: var(--gold); }
-
-/* Price display */
-.price-display {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  position: relative;
-  overflow: hidden;
-}
-
-.price-pair {
-  font-size: 12px;
-  letter-spacing: 0.2em;
-  color: var(--muted);
-  margin-bottom: 8px;
-}
-
-.price-main {
-  font-family: var(--font-display);
-  font-size: clamp(52px, 12vw, 80px);
-  font-weight: 900;
-  letter-spacing: 0.02em;
-  line-height: 1;
-  margin-bottom: 8px;
-  transition: color 0.3s;
-}
-
-.price-main.up { color: var(--up); }
-.price-main.down { color: var(--down); }
-.price-main.neutral { color: var(--text); }
-
-.price-change {
-  font-size: 14px;
-  font-weight: 700;
-  margin-bottom: 16px;
-}
-
-/* Mini candlestick chart */
-.mini-chart {
-  width: 100%;
-  max-width: 520px;
-  height: 200px;
-  margin-bottom: 8px;
-  display: block;
-}
-
-.chart-toggle {
-  padding: 4px 10px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.chart-toggle.active {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: rgba(0,180,255,0.08);
-}
-
-#draw-canvas { pointer-events: none; }
-
-.entry-price-line {
-  font-size: 11px;
-  color: var(--muted);
-  border-top: 1px dashed var(--border2);
-  padding-top: 12px;
-  text-align: center;
-  width: 100%;
-  max-width: 360px;
-}
-
-/* Vote buttons */
-.vote-area {
-  padding: 16px 20px 24px;
-  border-top: 1px solid var(--border);
-  background: var(--surface);
-}
-
-.vote-label {
-  text-align: center;
-  font-size: 11px;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: 14px;
-}
-
-.vote-buttons {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  max-width: 480px;
-  margin: 0 auto;
-}
-
-.vote-voted-display {
-  text-align: center;
-  padding: 16px;
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 800;
-}
-
-.voted-up { color: var(--up); }
-.voted-down { color: var(--down); }
-
-/* Live votes visualization */
-.live-votes {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 12px;
-  max-width: 480px;
-  margin: 12px auto 0;
-}
-
-.vote-bar {
-  flex: 1;
-  height: 6px;
-  border-radius: 3px;
-  background: var(--border);
-  overflow: hidden;
-  position: relative;
-}
-
-.vote-fill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 0.5s ease;
-}
-
-.vote-fill-up { background: var(--up); }
-.vote-fill-down { background: var(--down); }
-
-.vote-count { font-size: 10px; color: var(--muted); }
-
-/* ══════════════════════════════════════
-   RESULT SCREEN
-══════════════════════════════════════ */
-#screen-result {
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  text-align: center;
-}
-
-.result-badge {
-  font-family: var(--font-display);
-  font-size: clamp(80px, 20vw, 140px);
-  font-weight: 900;
-  line-height: 1;
-  margin-bottom: 8px;
-  animation: resultPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
-
-@keyframes resultPop {
-  from { transform: scale(0.5); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
-}
-
-.result-win { color: var(--up); text-shadow: 0 0 60px rgba(0,230,118,0.5); }
-.result-lose { color: var(--down); text-shadow: 0 0 60px rgba(255,61,90,0.4); }
-.result-tie { color: var(--gold); text-shadow: 0 0 60px rgba(255,215,64,0.4); }
-
-.result-detail {
-  font-size: 14px;
-  color: var(--muted);
-  margin-bottom: 8px;
-  line-height: 1.8;
-}
-
-.result-coins {
-  font-family: var(--font-display);
-  font-size: 28px;
-  font-weight: 800;
-  color: var(--gold);
-  margin-bottom: 24px;
-}
-
-.result-stats {
-  display: flex;
-  gap: 24px;
-  justify-content: center;
-  margin-bottom: 28px;
-  flex-wrap: wrap;
-}
-
-.result-stat {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 14px 20px;
-  min-width: 100px;
-}
-
-.result-stat-label { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
-.result-stat-val { font-family: var(--font-display); font-size: 26px; font-weight: 800; }
-
-.result-actions {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-/* Toast */
-.toast {
-  position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%) translateY(80px);
-  background: var(--surface2);
-  border: 1px solid var(--border2);
-  border-radius: 8px;
-  padding: 12px 20px;
-  font-size: 12px;
-  z-index: 1000;
-  transition: transform 0.3s ease;
-  white-space: nowrap;
-}
-
-.toast.show { transform: translateX(-50%) translateY(0); }
-
-/* Price flash animation */
-@keyframes flashUp {
-  0% { background: rgba(0,230,118,0.15); }
-  100% { background: transparent; }
-}
-
-@keyframes flashDown {
-  0% { background: rgba(255,61,90,0.15); }
-  100% { background: transparent; }
-}
-
-.flash-up { animation: flashUp 0.4s ease; }
-.flash-down { animation: flashDown 0.4s ease; }
-
-/* Scrollbar */
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
 </style>
 </head>
 <body>
 
-<!-- ══ SCREEN: LANDING ══ -->
-<div id="screen-landing" class="screen active">
-  <div class="landing-inner">
-    <div class="logo">Traders.io</div>
-    <div class="hero-title">
-      <span class="up">UP</span>
-      <span class="vs">VS</span>
-      <span class="down">DOWN</span>
-    </div>
-    <p class="hero-sub">
-      Battle other traders in real-time forex predictions.<br>
-      No broker. No KYC. Just you, the chart, and your edge.
-    </p>
+<!-- NAV -->
+<nav>
+  <a href="index.html" class="nav-logo">TRADERS<span class="dot">●</span>IO</a>
+  <ul class="nav-links">
+    <li><a href="index.html" class="active">Home</a></li>
+    <li><a href="about.html">About</a></li>
+    <li><a href="contact.html">Contact</a></li>
+    <li><a href="battle.html" class="nav-cta">Play Free</a></li>
+  </ul>
+</nav>
 
-    <!-- Live ticker -->
-    <div class="ticker-bar" id="ticker-bar">
-      <div class="ticker-item">
-        <div class="ticker-pair">EUR/USD</div>
-        <div class="ticker-price" id="tick-eurusd">1.0842</div>
-        <div class="ticker-change up" id="tick-eurusd-chg">+0.012%</div>
-      </div>
-      <div class="ticker-item">
-        <div class="ticker-pair">GBP/USD</div>
-        <div class="ticker-price" id="tick-gbpusd">1.2634</div>
-        <div class="ticker-change down" id="tick-gbpusd-chg">−0.008%</div>
-      </div>
-      <div class="ticker-item">
-        <div class="ticker-pair">USD/JPY</div>
-        <div class="ticker-price" id="tick-usdjpy">154.82</div>
-        <div class="ticker-change up" id="tick-usdjpy-chg">+0.031%</div>
-      </div>
-    </div>
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">
+    <span class="pulse"></span>
+    847 traders online now
+  </div>
 
-    <div class="email-form">
-      <input type="email" id="landing-email" placeholder="your@email.com — get early access" />
-      <button class="btn btn-primary" onclick="handleEmailSignup()">PLAY FREE</button>
-    </div>
+  <h1>
+    <span class="line1">PREDICT</span>
+    <span class="line2">the market</span>
+    <span class="line3">& WIN</span>
+  </h1>
 
-    <div class="skip-link" onclick="skipToLobby()">Skip → Play as guest</div>
+  <p class="hero-sub">
+    Battle other traders in real-time forex price prediction challenges.
+    Learn technical analysis through competition — not lectures.
+  </p>
+
+  <div class="hero-cta">
+    <a href="battle.html" class="btn-primary">START PLAYING FREE</a>
+    <a href="about.html"  class="btn-secondary">HOW IT WORKS</a>
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats-strip">
+  <div class="stat-item">
+    <span class="stat-num green" id="stat-players">12,400+</span>
+    <span class="stat-label">Registered Traders</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-num blue">10</span>
+    <span class="stat-label">Forex Pairs</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-num gold">1m – 1h</span>
+    <span class="stat-label">Timeframes</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-num green">Free</span>
+    <span class="stat-label">To Play</span>
   </div>
 </div>
 
-<!-- ══ SCREEN: LOBBY ══ -->
-<div id="screen-lobby" class="screen">
-  <div class="top-nav">
-    <div class="nav-logo">TRADERS.IO</div>
-    <div class="nav-stats">
-      <span>🟢 <strong id="online-count">847</strong> online</span>
-      <span>🏆 <strong id="player-coins">500</strong> coins</span>
-      <span id="player-name-display" style="color:var(--accent)">Guest</span>
+<!-- HOW IT WORKS -->
+<section class="section" id="how">
+  <div class="section-inner">
+    <span class="section-label">// How it works</span>
+    <h2 class="section-title">THREE STEPS<br>TO BATTLE</h2>
+
+    <div class="steps-grid">
+      <div class="step">
+        <span class="step-num">01</span>
+        <span class="step-icon">📊</span>
+        <h3>ANALYSE THE CHART</h3>
+        <p>You get 15 seconds to study a real historical forex chart. Identify the trend, support, resistance — use your edge.</p>
+      </div>
+      <div class="step">
+        <span class="step-num">02</span>
+        <span class="step-icon">⚡</span>
+        <h3>PLACE YOUR CALL</h3>
+        <p>Will price go UP or DOWN over the next 5–50 bars? Lock in your prediction before the timer runs out.</p>
+      </div>
+      <div class="step">
+        <span class="step-num">03</span>
+        <span class="step-icon">🏆</span>
+        <h3>WATCH THE REPLAY</h3>
+        <p>The market replays bar by bar in real time. Win coins, climb the leaderboard, and do it again — instantly.</p>
+      </div>
     </div>
   </div>
+</section>
 
-  <div class="lobby-body">
-    <div class="lobby-main">
+<!-- FEATURES -->
+<section class="section" style="padding-top:0">
+  <div class="section-inner">
+    <span class="section-label">// Features</span>
+    <h2 class="section-title">BUILT FOR<br>REAL TRADERS</h2>
 
-      <div class="section-heading">// Choose your battle</div>
-      <div class="mode-grid">
-        <div class="mode-card mode-1v1" onclick="selectMode('1v1')">
-          <div class="mode-icon">⚔️</div>
-          <div class="mode-name">1v1 DUEL</div>
-          <div class="mode-desc">Face one opponent. Same chart, same moment. Higher stakes, pure skill.</div>
-          <div class="mode-players" id="players-1v1">⬤ 312 waiting</div>
-        </div>
-        <div class="mode-card mode-group" onclick="selectMode('group')">
-          <div class="mode-icon">🏟️</div>
-          <div class="mode-name">ARENA</div>
-          <div class="mode-desc">Up to 20 traders battle simultaneously. Most correct predictions wins.</div>
-          <div class="mode-players" id="players-group">⬤ 535 waiting</div>
-        </div>
+    <div class="features-grid">
+      <div class="feature">
+        <div class="feature-icon">🕯</div>
+        <h3>REAL HISTORICAL DATA</h3>
+        <p>Every chart is real historical forex data — EUR/USD, GBP/USD, USD/JPY and more. No simulated nonsense.</p>
       </div>
-
-      <div class="section-heading">// Select pair</div>
-      <div class="pair-grid">
-        <button class="pair-btn active" onclick="selectPair(this,'EUR/USD')">EUR/USD</button>
-        <button class="pair-btn" onclick="selectPair(this,'GBP/USD')">GBP/USD</button>
-        <button class="pair-btn" onclick="selectPair(this,'USD/JPY')">USD/JPY</button>
-        <button class="pair-btn" onclick="selectPair(this,'AUD/USD')">AUD/USD</button>
-        <button class="pair-btn" onclick="selectPair(this,'USD/CHF')">USD/CHF</button>
-        <button class="pair-btn" onclick="selectPair(this,'USD/CAD')">USD/CAD</button>
+      <div class="feature">
+        <div class="feature-icon">⚔️</div>
+        <h3>PvP BATTLE MODES</h3>
+        <p>1v1 duels or Arena mode with up to 20 traders. Ghost bots fill lobbies instantly so you never wait.</p>
       </div>
-
-      <div class="section-heading">// Chart timeframe <span style="color:var(--muted);font-size:10px;font-weight:400;letter-spacing:0">(context voor analyse)</span></div>
-      <div class="tf-grid">
-        <button class="tf-btn active" onclick="selectTF(this,'1min')">1m</button>
-        <button class="tf-btn" onclick="selectTF(this,'5min')">5m</button>
-        <button class="tf-btn" onclick="selectTF(this,'15min')">15m</button>
-        <button class="tf-btn" onclick="selectTF(this,'1h')">1h</button>
+      <div class="feature">
+        <div class="feature-icon">📈</div>
+        <h3>MULTIPLE TIMEFRAMES</h3>
+        <p>Trade on 1m, 5m, 15m or 1h charts. Set your expiry from 3 to 50 bars. Your game, your strategy.</p>
       </div>
-
-      <div class="section-heading">// Expiry <span style="color:var(--muted);font-size:10px;font-weight:400;letter-spacing:0">(hoeveel bars vooruit)</span></div>
-      <div class="tf-grid" style="grid-template-columns:repeat(6,1fr)">
-        <button class="tf-btn" onclick="selectExpiry(this,3)">3</button>
-        <button class="tf-btn active" onclick="selectExpiry(this,5)">5</button>
-        <button class="tf-btn" onclick="selectExpiry(this,10)">10</button>
-        <button class="tf-btn" onclick="selectExpiry(this,20)">20</button>
-        <button class="tf-btn" onclick="selectExpiry(this,35)">35</button>
-        <button class="tf-btn" onclick="selectExpiry(this,50)">50</button>
+      <div class="feature">
+        <div class="feature-icon">🎯</div>
+        <h3>DRAW & ANALYSE</h3>
+        <p>Place S/R lines directly on the chart before making your call. Real tools, real analysis, real learning.</p>
       </div>
-      <div id="expiry-hint" style="font-size:10px;color:var(--muted);margin:-12px 0 20px 2px">5 bars op 1m = 5 min · op 1h = 5 uur</div>
-
-      <button class="btn btn-accent" style="width:100%;font-size:18px;padding:18px;" onclick="findMatch()">
-        FIND MATCH →
-      </button>
-
-    </div>
-
-    <!-- Leaderboard -->
-    <div class="leaderboard-panel">
-      <div class="lb-title">🏆 TOP TRADERS</div>
-      <div id="leaderboard-list"></div>
+      <div class="feature">
+        <div class="feature-icon">🔁</div>
+        <h3>FAST LOOP LEARNING</h3>
+        <p>One battle takes under 60 seconds. Do 30 in a session. Pattern recognition builds through repetition, not theory.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🆓</div>
+        <h3>FREE TO PLAY</h3>
+        <p>No credit card. No KYC. No withdrawal approvals. Just your browser and your edge.</p>
+      </div>
     </div>
   </div>
-</div>
+</section>
 
-<!-- ══ SCREEN: BATTLE ══ -->
-<div id="screen-battle" class="screen">
-  <div class="battle-nav">
-    <div>
-      <div class="battle-pair-display" id="battle-pair-label">EUR/USD</div>
-      <div style="font-size:10px;color:var(--muted)" id="battle-mode-label">1v1 DUEL</div>
-    </div>
-    <div style="text-align:center">
-      <div class="battle-timer timer-normal" id="battle-timer">15</div>
-      <div style="font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted)" id="timer-label">ANALYSE</div>
-    </div>
-    <div class="battle-phase" id="battle-phase">
-      <div style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent)" id="phase-label">PREDICT</div>
-      <div style="color:var(--up)" id="battle-round">Battle #1</div>
-      <div style="font-size:9px;color:var(--muted)" id="expiry-label">5 bars</div>
-    </div>
-  </div>
-  <div id="replay-progress-wrap" style="display:none;height:3px;background:var(--border)">
-    <div id="replay-progress-fill" style="height:100%;background:var(--gold);width:0%;transition:width 0.55s ease"></div>
-  </div>
-
-  <div class="battle-body">
-    <!-- Opponent -->
-    <div class="opponent-bar">
-      <div class="opp-info">
-        <div class="opp-avatar" id="opp-avatar">🤖</div>
-        <div>
-          <div class="opp-name" id="opp-name">Finding opponent...</div>
-          <div class="opp-record" id="opp-record">W:0 L:0</div>
-        </div>
-      </div>
-      <div class="opp-status" id="opp-status">waiting...</div>
-    </div>
-
-    <!-- Price -->
-    <div class="price-display" id="price-display">
-      <div class="price-pair" id="battle-pair-sub">EUR / USD</div>
-      <div class="price-main neutral" id="price-big">1.0842</div>
-      <div class="price-change" id="price-change-display">—</div>
-      <div style="display:flex;justify-content:space-between;align-items:center;width:100%;max-width:560px;margin-bottom:6px">
-        <div style="font-size:10px;color:var(--muted)" id="chart-tf-label">5m · EUR/USD</div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
-          <button class="chart-toggle active" id="toggle-candle" onclick="setChartType('candle')">🕯 Candles</button>
-          <button class="chart-toggle" id="toggle-line" onclick="setChartType('line')">📈 Line</button>
-          <span style="width:1px;background:var(--border);margin:0 2px;align-self:stretch"></span>
-          <button class="chart-toggle" id="tool-hline" onclick="setDrawTool('hline')" title="Horizontal S/R line — click on chart">━ S/R</button>
-          <button class="chart-toggle" id="tool-trend" onclick="setDrawTool('trend')" title="Trendline — click and drag">╱ Trend</button>
-          <button class="chart-toggle" id="tool-clear" onclick="clearDrawings()" title="Clear all drawings" style="color:var(--down)">✕ Clear</button>
-        </div>
-      </div>
-      <div style="position:relative;width:100%;max-width:560px" id="chart-wrap">
-        <div id="lwc-container" style="width:100%;height:260px;border-radius:8px;overflow:hidden;border:1px solid var(--border)"></div>
-        <canvas id="draw-canvas" style="position:absolute;top:0;left:0;width:100%;height:260px;pointer-events:none;border-radius:8px"></canvas>
-
-      </div>
-      <!-- Analyse countdown bar — prominent, below chart -->
-      <div id="analyse-bar" style="width:100%;max-width:520px;margin-top:10px;display:none;background:rgba(0,180,255,0.06);border:1px solid rgba(0,180,255,0.2);border-radius:10px;padding:12px 14px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <span style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent);font-weight:600" id="analyse-bar-label">🔍 ANALYSE — study the chart before you predict</span>
-          <span style="font-family:var(--font-display);font-size:32px;font-weight:900;color:var(--accent);line-height:1;min-width:36px;text-align:right" id="analyse-bar-num">15</span>
-        </div>
-        <div style="height:6px;background:var(--border);border-radius:4px;overflow:hidden">
-          <div id="analyse-bar-fill" style="height:100%;background:var(--accent);width:100%;transition:width 1s linear;border-radius:4px"></div>
-        </div>
-      </div>
-      <div class="entry-price-line" id="entry-line" style="display:none">
-        Entry: <span id="entry-price-val">—</span> · Current PnL: <span id="current-pnl">—</span>
-      </div>
-    </div>
-
-    <!-- Vote -->
-    <div class="vote-area">
-      <div class="vote-label" id="vote-label">Will <span id="vote-pair-inline">EUR/USD</span> close UP or DOWN after <span id="vote-tf">5</span> bars?</div>
-      <div class="vote-buttons" id="vote-buttons">
-        <button class="btn btn-up" onclick="castVote('up')">▲ UP</button>
-        <button class="btn btn-down" onclick="castVote('down')">▼ DOWN</button>
-      </div>
-      <div class="vote-voted-display" id="vote-voted" style="display:none"></div>
-      <div class="live-votes" id="live-votes" style="display:none">
-        <span class="vote-count" id="vote-up-count">0</span>
-        <div class="vote-bar">
-          <div class="vote-fill vote-fill-up" id="vote-fill-up" style="width:50%"></div>
-        </div>
-        <div class="vote-bar">
-          <div class="vote-fill vote-fill-down" id="vote-fill-down" style="width:50%"></div>
-        </div>
-        <span class="vote-count" id="vote-down-count">0</span>
-      </div>
-    </div>
+<!-- PAIRS TICKER -->
+<div class="pairs-section">
+  <div class="pairs-scroll" id="pairs-scroll">
+    <!-- First set -->
+    <div class="pair-card"><div class="pair-name">EUR/USD</div><div class="pair-price" id="p1">1.0842</div><div class="pair-chg up">+0.012%</div></div>
+    <div class="pair-card"><div class="pair-name">GBP/USD</div><div class="pair-price" id="p2">1.2634</div><div class="pair-chg down">−0.008%</div></div>
+    <div class="pair-card"><div class="pair-name">USD/JPY</div><div class="pair-price" id="p3">154.82</div><div class="pair-chg up">+0.031%</div></div>
+    <div class="pair-card"><div class="pair-name">AUD/USD</div><div class="pair-price" id="p4">0.6418</div><div class="pair-chg down">−0.015%</div></div>
+    <div class="pair-card"><div class="pair-name">USD/CHF</div><div class="pair-price" id="p5">0.9012</div><div class="pair-chg up">+0.006%</div></div>
+    <div class="pair-card"><div class="pair-name">USD/CAD</div><div class="pair-price" id="p6">1.3645</div><div class="pair-chg up">+0.019%</div></div>
+    <div class="pair-card"><div class="pair-name">NZD/USD</div><div class="pair-price">0.5920</div><div class="pair-chg down">−0.011%</div></div>
+    <div class="pair-card"><div class="pair-name">EUR/GBP</div><div class="pair-price">0.8580</div><div class="pair-chg up">+0.004%</div></div>
+    <div class="pair-card"><div class="pair-name">EUR/JPY</div><div class="pair-price">167.80</div><div class="pair-chg up">+0.042%</div></div>
+    <div class="pair-card"><div class="pair-name">GBP/JPY</div><div class="pair-price">195.60</div><div class="pair-chg down">−0.023%</div></div>
+    <!-- Duplicate for seamless loop -->
+    <div class="pair-card"><div class="pair-name">EUR/USD</div><div class="pair-price">1.0842</div><div class="pair-chg up">+0.012%</div></div>
+    <div class="pair-card"><div class="pair-name">GBP/USD</div><div class="pair-price">1.2634</div><div class="pair-chg down">−0.008%</div></div>
+    <div class="pair-card"><div class="pair-name">USD/JPY</div><div class="pair-price">154.82</div><div class="pair-chg up">+0.031%</div></div>
+    <div class="pair-card"><div class="pair-name">AUD/USD</div><div class="pair-price">0.6418</div><div class="pair-chg down">−0.015%</div></div>
+    <div class="pair-card"><div class="pair-name">USD/CHF</div><div class="pair-price">0.9012</div><div class="pair-chg up">+0.006%</div></div>
+    <div class="pair-card"><div class="pair-name">USD/CAD</div><div class="pair-price">1.3645</div><div class="pair-chg up">+0.019%</div></div>
+    <div class="pair-card"><div class="pair-name">NZD/USD</div><div class="pair-price">0.5920</div><div class="pair-chg down">−0.011%</div></div>
+    <div class="pair-card"><div class="pair-name">EUR/GBP</div><div class="pair-price">0.8580</div><div class="pair-chg up">+0.004%</div></div>
+    <div class="pair-card"><div class="pair-name">EUR/JPY</div><div class="pair-price">167.80</div><div class="pair-chg up">+0.042%</div></div>
+    <div class="pair-card"><div class="pair-name">GBP/JPY</div><div class="pair-price">195.60</div><div class="pair-chg down">−0.023%</div></div>
   </div>
 </div>
 
-<!-- ══ SCREEN: RESULT ══ -->
-<div id="screen-result" class="screen">
-  <div class="result-badge" id="result-badge">WIN</div>
-  <div class="result-detail" id="result-detail">
-    EUR/USD moved UP by 0.0012 (12 pips)<br>
-    Your prediction: ▲ UP ✓
-  </div>
-  <div class="result-coins" id="result-coins">+100 coins 🏆</div>
-  <div class="result-stats">
-    <div class="result-stat">
-      <div class="result-stat-label">Win Rate</div>
-      <div class="result-stat-val" id="res-winrate">—</div>
+<!-- CTA -->
+<section class="cta-section">
+  <div class="cta-box">
+    <h2>READY TO<br>BATTLE?</h2>
+    <p>Join thousands of traders improving their edge — one prediction at a time.</p>
+    <div class="email-row">
+      <input type="email" placeholder="your@email.com" id="cta-email" />
+      <a href="battle.html" class="btn-primary" style="font-size:18px;padding:14px 28px;white-space:nowrap" onclick="saveEmail()">PLAY FREE →</a>
     </div>
-    <div class="result-stat">
-      <div class="result-stat-label">Streak</div>
-      <div class="result-stat-val" id="res-streak">—</div>
-    </div>
-    <div class="result-stat">
-      <div class="result-stat-label">Total Coins</div>
-      <div class="result-stat-val" id="res-coins">—</div>
-    </div>
+    <p style="font-size:12px;color:var(--muted);margin-top:16px">No credit card. No KYC. Free forever.</p>
   </div>
-  <div class="result-actions">
-    <button class="btn btn-primary" onclick="playAgain()">REMATCH ⚔️</button>
-    <button class="btn btn-ghost" onclick="goLobby()">LOBBY</button>
-    <button class="btn btn-ghost" onclick="shareResult()">SHARE 📤</button>
-  </div>
-</div>
+</section>
 
-<!-- Toast -->
-<div class="toast" id="toast">Copied!</div>
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <span class="logo">TRADERS.IO</span>
+      <p>A forex trading education platform where traders battle in real-time price prediction challenges. Built for traders, by traders.</p>
+    </div>
+    <div class="footer-links">
+      <div class="footer-col">
+        <h4>Platform</h4>
+        <a href="battle.html">Battle Arena</a>
+        <a href="about.html">How It Works</a>
+        <a href="index.html#how">Features</a>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <a href="about.html">About Us</a>
+        <a href="contact.html">Contact</a>
+        <a href="privacy.html">Privacy Policy</a>
+        <a href="terms.html">Terms of Use</a>
+      </div>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>© 2025 Traders.io. All rights reserved.</span>
+    <span>Contact: <a href="mailto:joey@traders.io" style="color:var(--accent);text-decoration:none">joey@traders.io</a></span>
+  </div>
+</footer>
 
 <script>
-// ═══════════════════════════════════
-// CONFIG
-// ═══════════════════════════════════
-const API_KEY = 'e4131a3de90040c2a8ee85e12d225310';
-const CANDLES_HISTORY  = 60;
-const CANDLES_FETCH    = 500;   // larger buffer = more battles before looping
-const ANALYSE_SECONDS  = 15;    // time to study chart before UP/DOWN
-const REPLAY_SPEED_MS  = 550;   // ms per candle during replay animation
-
-// ═══════════════════════════════════
-// STATE
-// ═══════════════════════════════════
-const state = {
-  player: { name: 'Guest', email: '', coins: 500, wins: 0, losses: 0, streak: 0 },
-  mode: '1v1',
-  pair: 'EUR/USD',
-  tf: '1min',
-  expiry: 5,            // bars ahead for outcome
-  vote: null,
-  entryPrice: null,
-  timerVal: ANALYSE_SECONDS,
-  timerInterval: null,
-  chartType: 'candle',
-  // drawing state managed by module-level vars: drawTool, drawings, trendP1
-  trendP1: null,     // temp first point for trend tool
-  oppVoted: false,
-  upVotes: 1,
-  downVotes: 0,
-  lastResult: null,
-  phase: 'analyse',     // analyse → vote-open → replaying → done
-  dataCache: {},
-  dataLoading: false,
-  cursorIndex: 0,
-  visibleCandles: [],
-  revealCandles: [],    // array of expiry candles to replay
-  battleCount: 0,
-};
-
-const decimals = {
-  'EUR/USD': 5, 'GBP/USD': 5, 'AUD/USD': 5, 'USD/CHF': 5, 'USD/CAD': 5, 'USD/JPY': 3,
-};
-
-function fmtPrice(pair, p) { return parseFloat(p).toFixed(decimals[pair]); }
-function cacheKey() { return `${state.pair}_${state.tf}`; }
-
-// ═══════════════════════════════════
-// TWELVE DATA — FETCH & CACHE
-// ═══════════════════════════════════
-async function ensureData() {
-  const key = cacheKey();
-
-  // Already have enough data — skip fetch
-  if (state.dataCache[key] && state.dataCache[key].length >= CANDLES_HISTORY + 10) {
-    return;
-  }
-
-  // Try real API with 5 second timeout
-  try {
-    const symbol = state.pair.replace('/', '%2F');
-    const url = `https://api.twelvedata.com/time_series?symbol=${symbol}&interval=${state.tf}&outputsize=${CANDLES_FETCH}&apikey=${API_KEY}`;
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
-
-    const res  = await fetch(url, { signal: controller.signal });
-    clearTimeout(timeout);
-    const json = await res.json();
-
-    if (json.values && json.values.length) {
-      state.dataCache[key] = json.values.reverse().map(v => ({
-        o: parseFloat(v.open),
-        h: parseFloat(v.high),
-        l: parseFloat(v.low),
-        c: parseFloat(v.close),
-      }));
-      state.cursorIndex = CANDLES_HISTORY;
-      return; // real data loaded
-    }
-  } catch(e) {
-    console.warn('Twelve Data unavailable, using simulated data');
-  }
-
-  // Fallback: always generate simulated data so game never gets stuck
-  state.dataCache[key] = generateSimulatedData(state.pair, CANDLES_FETCH);
-  state.cursorIndex = CANDLES_HISTORY;
-}
-
-// Realistic random-walk price generator as fallback
-function generateSimulatedData(pair, count) {
-  const bases = {
-    'EUR/USD':1.0842,'GBP/USD':1.2634,'USD/JPY':154.82,
-    'AUD/USD':0.6418,'USD/CHF':0.9012,'USD/CAD':1.3645
-  };
-  const vol = pair === 'USD/JPY' ? 0.08 : 0.0004;
-  let price = bases[pair] || 1.0;
-  const candles = [];
-  for (let i = 0; i < count; i++) {
-    const open  = price;
-    const move  = (Math.random() - 0.495) * vol * 3;
-    const close = open + move;
-    const wick  = Math.random() * vol * 2;
-    const high  = Math.max(open, close) + wick;
-    const low   = Math.min(open, close) - wick * 0.5;
-    candles.push({ o: open, h: high, l: low, c: close });
-    price = close;
-  }
-  return candles;
-}
-
-function showChartLoading(show) {
-  // Loading state shown in Find Match button instead
-}
-
-function advanceCursor() {
-  const data = state.dataCache[cacheKey()];
-  if (!data) return false;
-  // Move cursor forward, wrapping around if we reach the end
-  state.cursorIndex++;
-  if (state.cursorIndex >= data.length - 1) {
-    state.cursorIndex = CANDLES_HISTORY; // loop back
-  }
-  return true;
-}
-
-function getVisibleCandles() {
-  const data = state.dataCache[cacheKey()];
-  if (!data) return [];
-  const start = Math.max(0, state.cursorIndex - CANDLES_HISTORY);
-  return data.slice(start, state.cursorIndex);
-}
-
-function getRevealCandles() {
-  const data = state.dataCache[cacheKey()];
-  if (!data) return [];
-  return data.slice(state.cursorIndex, state.cursorIndex + state.expiry);
-}
-
-// ═══════════════════════════════════
-// LEADERBOARD DATA
-// ═══════════════════════════════════
-const leaders = [
-  { name: 'ScalpKing_NL', wins: 847, total: 1012, pct: 83.7, emoji: '🦅' },
-  { name: 'PipHunter',    wins: 721, total: 890,  pct: 81.0, emoji: '🎯' },
-  { name: 'FX_Ninja',     wins: 634, total: 800,  pct: 79.3, emoji: '⚔️' },
-  { name: 'TrendRider',   wins: 590, total: 760,  pct: 77.6, emoji: '🏄' },
-  { name: 'BreakoutBob',  wins: 441, total: 600,  pct: 73.5, emoji: '💥' },
-  { name: 'SniperFX',     wins: 387, total: 540,  pct: 71.7, emoji: '🎯' },
-  { name: 'MomentumMax',  wins: 312, total: 450,  pct: 69.3, emoji: '⚡' },
-  { name: 'PipDreamer',   wins: 289, total: 430,  pct: 67.2, emoji: '🌙' },
-];
-
-const botNames = [
-  { name: 'ScalpBot_v2',  record: 'W:412 L:98',  emoji: '🤖' },
-  { name: 'AlgoTrader_X', record: 'W:287 L:143', emoji: '🦾' },
-  { name: 'TrendBot_Pro', record: 'W:521 L:201', emoji: '🤖' },
-  { name: 'MomentumAI',   record: 'W:190 L:88',  emoji: '⚡' },
-];
-
-const playerNames = [
-  { name: 'TradingLion',  record: 'W:89 L:34',   emoji: '🦁' },
-  { name: 'PipMaster_NL', record: 'W:156 L:71',  emoji: '🇳🇱' },
-  { name: 'FX_Wolf',      record: 'W:234 L:112', emoji: '🐺' },
-  { name: 'ChartWizard',  record: 'W:67 L:41',   emoji: '🧙' },
-  { name: 'BullRun2025',  record: 'W:445 L:189', emoji: '🐂' },
-];
-
-// ═══════════════════════════════════
-// SCREENS
-// ═══════════════════════════════════
-function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById('screen-' + id).classList.add('active');
-}
-
-function renderLeaderboard() {
-  const el = document.getElementById('leaderboard-list');
-  if (!el) return;
-  el.innerHTML = leaders.map((p, i) => `
-    <div class="lb-row">
-      <div class="lb-rank rank-${i < 3 ? i+1 : 'other'}">${i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</div>
-      <div class="lb-avatar" style="background:hsl(${i*40},60%,20%)">${p.emoji}</div>
-      <div class="lb-info">
-        <div class="lb-name">${p.name}</div>
-        <div class="lb-wins">${p.wins}W · ${p.total} games</div>
-      </div>
-      <div class="lb-pct">${p.pct}%</div>
-    </div>
-  `).join('');
-}
-
-// ═══════════════════════════════════
-// LANDING
-// ═══════════════════════════════════
-function handleEmailSignup() {
-  const email = document.getElementById('landing-email').value;
-  if (!email || !email.includes('@')) { showToast('Enter a valid email to continue'); return; }
-  state.player.email = email;
-  state.player.name = email.split('@')[0];
-  document.getElementById('player-name-display').textContent = state.player.name;
-  showToast('Welcome! 500 coins added 🏆');
-  goLobby();
-}
-
-function skipToLobby() { goLobby(); }
-
-function goLobby() {
-  renderLeaderboard();
-  showScreen('lobby');
-}
-
-// ═══════════════════════════════════
-// LOBBY
-// ═══════════════════════════════════
-function selectMode(m) {
-  state.mode = m;
-  document.querySelectorAll('.mode-card').forEach(c => c.style.borderColor = '');
-  document.querySelector('.mode-' + m).style.borderColor = 'var(--accent)';
-}
-
-function selectPair(btn, pair) {
-  state.pair = pair;
-  document.querySelectorAll('.pair-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-}
-
-function selectTF(btn, tf) {
-  state.tf = tf;
-  // Only update tf-btns in the chart TF row (first tf-grid)
-  const grids = document.querySelectorAll('.tf-grid');
-  if (grids[0]) grids[0].querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  updateExpiryHint();
-}
-
-function selectExpiry(btn, bars) {
-  state.expiry = bars;
-  const grids = document.querySelectorAll('.tf-grid');
-  if (grids[1]) grids[1].querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  updateExpiryHint();
-}
-
-function updateExpiryHint() {
-  const labels = { '1min':'min', '5min':'min', '15min':'min', '1h':'uur' };
-  const mult   = { '1min':1,    '5min':5,     '15min':15,    '1h':60   };
-  const unit   = labels[state.tf] || 'min';
-  const mins   = (mult[state.tf] || 1) * state.expiry;
-  const display = mins >= 60 ? (mins/60).toFixed(0)+' uur' : mins+' min';
-  const hint = document.getElementById('expiry-hint');
-  if (hint) hint.textContent = state.expiry + ' bars op ' + (state.tf==='1h'?'1h':state.tf.replace('min','m')) + ' = ' + display + ' vooruit';
-}
-
-async function findMatch() {
-  const btn = document.querySelector('[onclick="findMatch()"]');
-  if (btn) { btn.textContent = '⏳ Finding match...'; btn.disabled = true; }
-
-  try {
-    await ensureData();
-  } catch(e) {
-    console.error(e);
-  }
-
-  if (btn) { btn.textContent = 'FIND MATCH →'; btn.disabled = false; }
-
-  // Always try to start — ensureData guarantees data (real or simulated)
-  startBattle();
-}
-
-// ═══════════════════════════════════
-// BATTLE — HISTORICAL REPLAY
-// ═══════════════════════════════════
-function startBattle() {
-  state.vote = null;
-  state.entryPrice = null;
-  state.phase = 'analyse';
-  state.upVotes = Math.floor(Math.random() * 3) + 1;
-  state.downVotes = Math.floor(Math.random() * 3) + 1;
-  state.battleCount++;
-
-  if (state.battleCount > 1) {
-    const data = state.dataCache[cacheKey()];
-    if (data) {
-      state.cursorIndex += state.expiry;
-      if (state.cursorIndex + state.expiry + 5 >= data.length) state.cursorIndex = CANDLES_HISTORY;
-    }
-  }
-
-  state.visibleCandles = getVisibleCandles();
-  state.revealCandles  = getRevealCandles();
-
-  // Safety: if somehow data missing, generate on the spot
-  if (!state.visibleCandles.length || !state.revealCandles.length) {
-    const key = cacheKey();
-    state.dataCache[key] = generateSimulatedData(state.pair, CANDLES_FETCH);
-    state.cursorIndex    = CANDLES_HISTORY;
-    state.visibleCandles = getVisibleCandles();
-    state.revealCandles  = getRevealCandles();
-  }
-
-  const lastCandle = state.visibleCandles[state.visibleCandles.length - 1];
-  state.entryPrice = lastCandle.c;
-
-  const useBot = Math.random() < 0.4;
-  const pool   = useBot ? botNames : playerNames;
-  const opp    = pool[Math.floor(Math.random() * pool.length)];
-  const tfLabel = { '1min':'1m', '5min':'5m', '15min':'15m', '1h':'1h' }[state.tf] || state.tf;
-
-  document.getElementById('battle-pair-label').textContent  = state.pair;
-  document.getElementById('battle-mode-label').textContent  = state.mode === '1v1' ? '1v1 DUEL' : 'ARENA';
-  document.getElementById('battle-pair-sub').textContent    = state.pair.replace('/', ' / ');
-  document.getElementById('chart-tf-label').textContent     = tfLabel + ' · ' + state.pair;
-  document.getElementById('battle-round').textContent       = 'Battle #' + state.battleCount;
-  document.getElementById('expiry-label').textContent       = state.expiry + ' bars expiry';
-  document.getElementById('phase-label').textContent        = 'ANALYSE';
-  document.getElementById('timer-label').textContent        = 'ANALYSE';
-  document.getElementById('opp-avatar').textContent         = opp.emoji;
-  document.getElementById('opp-name').textContent           = opp.name;
-  document.getElementById('opp-record').textContent         = opp.record;
-  document.getElementById('opp-status').textContent         = 'analysing...';
-  document.getElementById('opp-status').className           = 'opp-status';
-
-  document.getElementById('vote-buttons').style.display   = 'grid';
-  document.getElementById('vote-voted').style.display     = 'none';
-  document.getElementById('live-votes').style.display     = 'none';
-  document.getElementById('entry-line').style.display     = 'none';
-  document.getElementById('vote-label').style.display     = 'block';
-  document.getElementById('vote-tf').textContent          = state.expiry + ' bars';
-  document.getElementById('vote-pair-inline').textContent = state.pair;
-  document.getElementById('replay-progress-wrap').style.display = 'none';
-  document.getElementById('replay-progress-fill').style.width   = '0%';
-  document.querySelectorAll('.btn-up, .btn-down').forEach(b => {
-    b.disabled = true; b.style.opacity = '0.35';
-  });
-
-  drawings = [];
-  trendP1      = null;
-  drawTool     = 'none';
-  state._replayIdx = 0;
-  removeEntryLine();
-  updatePriceDisplay(lastCandle.c, null);
-
-  // Show battle screen FIRST so LWC container has real dimensions
-  showScreen('battle');
-
-  // Small rAF delay so browser paints the screen before LWC measures container
-  requestAnimationFrame(() => {
-    // Init LWC if first time, otherwise reset series
-    if (!lwcChart) {
-      initLWC();
-    } else {
-      if (lwcSeries) { try { lwcChart.removeSeries(lwcSeries); } catch(e){} lwcSeries = null; }
-      entryLine = null;
-      if (state.chartType === 'candle') {
-        lwcSeries = lwcChart.addCandlestickSeries({
-          upColor: '#00e676', downColor: '#ff3d5a',
-          borderUpColor: '#00e676', borderDownColor: '#ff3d5a',
-          wickUpColor: '#00e676', wickDownColor: '#ff3d5a',
-        });
-      } else {
-        lwcSeries = lwcChart.addLineSeries({ color: '#00b4ff', lineWidth: 2, priceLineVisible: false });
-      }
-    }
-    loadCandlesIntoChart(state.visibleCandles);
-    showAnalyseBar(true);
-    updateAnalyseBar(ANALYSE_SECONDS, ANALYSE_SECONDS);
-    startAnalyseCountdown();
-  });
-
-  // Opponent locks in during analyse window (after rAF)
-  setTimeout(() => {
-    document.getElementById('opp-status').textContent = '✓ Locked in';
-    document.getElementById('opp-status').className   = 'opp-status voted';
-    if (Math.random() > 0.5) state.upVotes++; else state.downVotes++;
-    updateVoteBars();
-  }, Math.random() * 10000 + 4000);
-}
-
-function startAnalyseCountdown() {
-  state.timerVal = ANALYSE_SECONDS;
-  updateTimerDisplay();
-  updateAnalyseBar(ANALYSE_SECONDS, ANALYSE_SECONDS);
-  if (state.timerInterval) clearInterval(state.timerInterval);
-  state.timerInterval = setInterval(() => {
-    state.timerVal--;
-    updateTimerDisplay();
-    updateAnalyseBar(state.timerVal, ANALYSE_SECONDS);
-    if (state.timerVal <= 0) {
-      clearInterval(state.timerInterval);
-      openVoting();
-    }
-  }, 1000);
-}
-
-function openVoting() {
-  state.phase = 'vote-open';
-  document.getElementById('phase-label').textContent = 'PREDICT';
-  document.getElementById('timer-label').textContent = 'DECIDE';
-  document.querySelectorAll('.btn-up, .btn-down').forEach(b => {
-    b.disabled = false; b.style.opacity = '1';
-  });
-  updateAnalyseBar(10, 10, 'decide');
-  showToast('🎯 Make your call — UP or DOWN?');
-
-  state.timerVal = 10;
-  updateTimerDisplay();
-  state.timerInterval = setInterval(() => {
-    state.timerVal--;
-    updateTimerDisplay();
-    updateAnalyseBar(state.timerVal, 10, 'decide');
-    if (state.timerVal <= 0) {
-      clearInterval(state.timerInterval);
-      if (!state.vote) castVote(Math.random() > 0.5 ? 'up' : 'down');
-    }
-  }, 1000);
-}
-
-function castVote(direction) {
-  if (state.vote) return;
-  if (state.timerInterval) clearInterval(state.timerInterval);
-  state.vote = direction;
-
-  document.getElementById('vote-buttons').style.display = 'none';
-  document.getElementById('entry-line').style.display   = 'block';
-  document.getElementById('entry-price-val').textContent = fmtPrice(state.pair, state.entryPrice);
-  addEntryLine(state.entryPrice);
-
-  const vEl = document.getElementById('vote-voted');
-  vEl.style.display = 'block';
-  vEl.innerHTML = direction === 'up'
-    ? '<span class="voted-up">▲ UP locked in · replaying ' + state.expiry + ' bars...</span>'
-    : '<span class="voted-down">▼ DOWN locked in · replaying ' + state.expiry + ' bars...</span>';
-
-  if (direction === 'up') state.upVotes++; else state.downVotes++;
-  document.getElementById('live-votes').style.display = 'flex';
-  updateVoteBars();
-
-  setTimeout(() => startReplay(), 500);
-}
-
-function startReplay() {
-  state.phase = 'replaying';
-  document.getElementById('phase-label').textContent = 'REPLAY';
-  document.getElementById('timer-label').textContent = 'BAR';
-  document.getElementById('replay-progress-wrap').style.display = 'block';
-  showAnalyseBar(false);
-  clearDrawings();
-
-  const candles = state.revealCandles;
-  let i = 0;
-
-  function playNext() {
-    if (i >= candles.length) {
-      setTimeout(() => endBattle(), 500);
-      return;
-    }
-    const pct = ((i + 1) / candles.length) * 100;
-    document.getElementById('replay-progress-fill').style.width = pct + '%';
-    document.getElementById('battle-timer').textContent = i + 1;
-    document.getElementById('battle-timer').className = 'battle-timer ' +
-      (i < candles.length * 0.5 ? 'timer-normal' : i < candles.length * 0.8 ? 'timer-warning' : 'timer-danger');
-
-    // Append next replay candle onto the chart
-    appendCandle(candles[i]);
-    const prev = i > 0 ? candles[i-1].c : state.entryPrice;
-    updatePriceDisplay(candles[i].c, prev);
-
-    i++;
-    setTimeout(playNext, REPLAY_SPEED_MS);
-  }
-
-  playNext();
-}
-
-function endBattle() {
-  const candles = state.revealCandles;
-  if (!candles.length) { showResult(false, 0, false); return; }
-
-  const exitC = candles[candles.length - 1].c;
-  const priceWentUp = exitC > state.entryPrice;
-  const playerWon   = state.vote
-    ? ((state.vote === 'up' && priceWentUp) || (state.vote === 'down' && !priceWentUp))
-    : false;
-
-  const pips = Math.abs((state.pair === 'USD/JPY' ? (exitC - state.entryPrice) * 100 : (exitC - state.entryPrice) * 10000));
-  state.lastResult = { won: playerWon, pips, exitC, priceWentUp };
-
-  if (playerWon) {
-    state.player.wins++;
-    state.player.streak++;
-    state.player.coins += 100 + (state.player.streak > 2 ? state.player.streak * 10 : 0);
-  } else {
-    state.player.losses++;
-    state.player.streak = 0;
-    state.player.coins = Math.max(0, state.player.coins - 50);
-  }
-
-  showResult(playerWon, pips, priceWentUp);
-}
-
-function updateTimerDisplay() {
-  const el = document.getElementById('battle-timer');
-  if (!el) return;
-  el.textContent = state.timerVal;
-  const total = state.phase === 'analyse' ? ANALYSE_SECONDS : 10;
-  if (state.timerVal > total * 0.55) el.className = 'battle-timer timer-normal';
-  else if (state.timerVal > 3)       el.className = 'battle-timer timer-warning';
-  else                               el.className = 'battle-timer timer-danger';
-}
-
-function updatePriceDisplay(price, prev) {
-  const el = document.getElementById('price-big');
-  const chgEl = document.getElementById('price-change-display');
-  if (!el) return;
-  el.textContent = fmtPrice(state.pair, price);
-
-  if (prev && price !== prev) {
-    el.className = 'price-main ' + (price > prev ? 'up' : 'down');
-    const diff = price - prev;
-    const pips = state.pair === 'USD/JPY' ? diff * 100 : diff * 10000;
-    chgEl.textContent = (pips >= 0 ? '+' : '') + pips.toFixed(1) + ' pips';
-    chgEl.style.color = pips >= 0 ? 'var(--up)' : 'var(--down)';
-  } else {
-    el.className = 'price-main neutral';
-    chgEl.textContent = '—';
-    chgEl.style.color = 'var(--muted)';
+function saveEmail() {
+  const email = document.getElementById('cta-email').value;
+  if (email && email.includes('@')) {
+    localStorage.setItem('traders_email', email);
   }
 }
-
-function updateVoteBars() {
-  const total = state.upVotes + state.downVotes;
-  const upPct = state.upVotes / total * 100;
-  const dnPct = state.downVotes / total * 100;
-  const uf = document.getElementById('vote-fill-up');
-  const df = document.getElementById('vote-fill-down');
-  if (uf) uf.style.width = upPct + '%';
-  if (df) df.style.width = dnPct + '%';
-  const uc = document.getElementById('vote-up-count');
-  const dc = document.getElementById('vote-down-count');
-  if (uc) uc.textContent = state.upVotes;
-  if (dc) dc.textContent = state.downVotes;
-}
-
-// ═══════════════════════════════════
-// ═══════════════════════════════════
-// LIGHTWEIGHT CHARTS ENGINE
-// ═══════════════════════════════════
-let lwcChart    = null;
-let lwcSeries   = null;
-let entryLine   = null;   // price line for entry
-let drawings    = [];     // { type:'hline'|'trend', priceLine, price, p1, p2 }
-let drawTool    = 'none'; // 'none' | 'hline' | 'trend'
-let trendP1     = null;   // first click of trend line {time, price}
-
-function initLWC() {
-  const container = document.getElementById('lwc-container');
-  if (!container) return;
-
-  // Destroy existing chart if any
-  if (lwcChart) { lwcChart.remove(); lwcChart = null; lwcSeries = null; }
-
-  lwcChart = LightweightCharts.createChart(container, {
-    width:  container.clientWidth,
-    height: 260,
-    layout: {
-      background: { color: '#080c12' },
-      textColor:  '#4a6080',
-      fontFamily: 'JetBrains Mono, monospace',
-      fontSize:   11,
-    },
-    grid: {
-      vertLines: { color: 'rgba(26,40,64,0.6)' },
-      horzLines: { color: 'rgba(26,40,64,0.6)' },
-    },
-    crosshair: {
-      mode: LightweightCharts.CrosshairMode.Normal,
-      vertLine: { color: 'rgba(0,180,255,0.4)', labelBackgroundColor: '#0d1420' },
-      horzLine: { color: 'rgba(0,180,255,0.4)', labelBackgroundColor: '#0d1420' },
-    },
-    rightPriceScale: {
-      borderColor: '#1a2840',
-      textColor:   '#4a6080',
-    },
-    timeScale: {
-      borderColor:     '#1a2840',
-      timeVisible:     false,   // hide timestamps
-      secondsVisible:  false,
-      tickMarkFormatter: () => '',  // blank all time labels
-    },
-    handleScroll:  { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true },
-    handleScale:   { mouseWheel: true, pinch: true },
-  });
-
-  // Resize observer
-  const ro = new ResizeObserver(() => {
-    if (lwcChart) lwcChart.applyOptions({ width: container.clientWidth });
-  });
-  ro.observe(container);
-
-  // Default to candle series
-  lwcSeries = lwcChart.addCandlestickSeries({
-    upColor:         '#00e676',
-    downColor:       '#ff3d5a',
-    borderUpColor:   '#00e676',
-    borderDownColor: '#ff3d5a',
-    wickUpColor:     '#00e676',
-    wickDownColor:   '#ff3d5a',
-  });
-
-  // Init draw canvas overlay after LWC ready
-  setTimeout(() => initDrawCanvas(), 100);
-}
-
-function setChartType(type) {
-  state.chartType = type;
-  document.getElementById('toggle-candle').classList.toggle('active', type === 'candle');
-  document.getElementById('toggle-line').classList.toggle('active',   type === 'line');
-
-  if (!lwcChart) return;
-
-  // Remove old series
-  if (lwcSeries) { lwcChart.removeSeries(lwcSeries); lwcSeries = null; }
-  entryLine = null;
-
-  if (type === 'candle') {
-    lwcSeries = lwcChart.addCandlestickSeries({
-      upColor: '#00e676', downColor: '#ff3d5a',
-      borderUpColor: '#00e676', borderDownColor: '#ff3d5a',
-      wickUpColor: '#00e676', wickDownColor: '#ff3d5a',
-    });
-  } else {
-    lwcSeries = lwcChart.addLineSeries({
-      color: '#00b4ff', lineWidth: 2, priceLineVisible: false,
-    });
-  }
-
-  // Reload full history
-  if (state.visibleCandles.length) loadCandlesIntoChart(state.visibleCandles);
-  setTimeout(() => initDrawCanvas(), 50);
-}
-
-// ── LWC data loading ──
-// We feed ALL cached candles up to cursorIndex into LWC so scrolling back works.
-// Time = array index (1-based). Replay appends candles with time = cursorIndex+1, +2 etc.
-
-let lwcTimeOffset = 0; // base index for current battle's candles in full dataset
-
-function loadCandlesIntoChart(visibleCandles) {
-  if (!lwcSeries) return;
-  const data = state.dataCache[cacheKey()];
-  if (!data || !data.length) return;
-
-  // Give LWC all candles from start up to cursorIndex (the full history)
-  const allHistory = data.slice(0, state.cursorIndex);
-  lwcTimeOffset = 0;
-
-  if (state.chartType === 'candle') {
-    lwcSeries.setData(allHistory.map((c, i) => ({
-      time: i + 1,
-      open: c.o, high: c.h, low: c.l, close: c.c,
-    })));
-  } else {
-    lwcSeries.setData(allHistory.map((c, i) => ({ time: i + 1, value: c.c })));
-  }
-
-  // Scroll to show the last ~80 candles (the visible trading window)
-  if (lwcChart) {
-    lwcChart.timeScale().scrollToPosition(-2, false);
-    lwcChart.timeScale().setVisibleLogicalRange({
-      from: allHistory.length - 80,
-      to:   allHistory.length + 2,
-    });
-  }
-
-  if (state.entryPrice && !entryLine) addEntryLine(state.entryPrice);
-}
-
-function appendCandle(candle) {
-  if (!lwcSeries) return;
-  const data = state.dataCache[cacheKey()];
-  // Time index = position in full dataset
-  const timeIdx = state.cursorIndex + (state._replayIdx || 0) + 1;
-  state._replayIdx = (state._replayIdx || 0) + 1;
-
-  if (state.chartType === 'candle') {
-    lwcSeries.update({ time: timeIdx, open: candle.o, high: candle.h, low: candle.l, close: candle.c });
-  } else {
-    lwcSeries.update({ time: timeIdx, value: candle.c });
-  }
-  if (lwcChart) lwcChart.timeScale().scrollToRealTime();
-}
-
-// ── Entry price line ──
-function addEntryLine(price) {
-  if (!lwcSeries) return;
-  entryLine = lwcSeries.createPriceLine({
-    price,
-    color:         'rgba(255,215,64,0.9)',
-    lineWidth:     1,
-    lineStyle:     LightweightCharts.LineStyle.Dashed,
-    axisLabelVisible: true,
-    title:         'ENTRY',
-  });
-}
-
-function removeEntryLine() {
-  if (lwcSeries && entryLine) { lwcSeries.removePriceLine(entryLine); entryLine = null; }
-}
-
-// ═══════════════════════════════════
-// DRAWING TOOLS — canvas overlay
-// All drawings stored as price coords and redrawn on every LWC subscribeVisibleTimeRangeChange
-// ═══════════════════════════════════
-
-let dragPoint = null; // for trendline drag
-
-function setDrawTool(tool) {
-  drawTool = tool;
-  trendP1  = null;
-  dragPoint = null;
-  ['tool-hline','tool-trend'].forEach(id => {
-    const btn = document.getElementById(id);
-    if (btn) btn.classList.toggle('active', id === 'tool-' + tool);
-  });
-  const dc = document.getElementById('draw-canvas');
-  if (dc) {
-    dc.style.pointerEvents = tool === 'none' ? 'none' : 'all';
-    dc.style.cursor = tool === 'hline' ? 'crosshair' : tool === 'trend' ? 'crosshair' : 'default';
-  }
-  if (tool === 'hline') showToast('Click on the chart to place a horizontal S/R line');
-  if (tool === 'trend') showToast('Click and drag to draw a trendline');
-}
-
-function getDrawPos(e) {
-  const dc = document.getElementById('draw-canvas');
-  if (!dc) return null;
-  const rect = dc.getBoundingClientRect();
-  return { x: e.clientX - rect.left, y: e.clientY - rect.top };
-}
-
-function posToPrice(y) {
-  if (!lwcSeries) return null;
-  return lwcSeries.coordinateToPrice(y);
-}
-
-function initDrawCanvas() {
-  const dc = document.getElementById('draw-canvas');
-  if (!dc) return;
-
-  dc.style.pointerEvents = 'none';
-  dc.addEventListener('mousedown', e => {
-    if (drawTool === 'none') return;
-    const pos = getDrawPos(e);
-    if (!pos) return;
-    if (drawTool === 'hline') {
-      const price = posToPrice(pos.y);
-      if (price) {
-        addHLine(price);
-        setDrawTool('none');
-      }
-    } else if (drawTool === 'trend') {
-      dragPoint = pos;
-    }
-  });
-
-  dc.addEventListener('mousemove', e => {
-    if (drawTool === 'none') return;
-    const pos = getDrawPos(e);
-    if (!pos) return;
-    redrawOverlay(pos);
-  });
-
-  dc.addEventListener('mouseup', e => {
-    if (drawTool === 'trend' && dragPoint) {
-      const pos = getDrawPos(e);
-      if (pos && Math.abs(pos.x - dragPoint.x) > 10) {
-        const p1price = posToPrice(dragPoint.y);
-        const p2price = posToPrice(pos.y);
-        if (p1price && p2price) {
-          drawings.push({ type: 'trend', x1: dragPoint.x, y1pct: dragPoint.y, x2: pos.x, y2pct: pos.y,
-            p1price, p2price });
-          dragPoint = null;
-          redrawOverlay(null);
-          setDrawTool('none');
-        }
-      }
-      dragPoint = null;
-    }
-  });
-
-  dc.addEventListener('mouseleave', () => {
-    if (dragPoint) dragPoint = null;
-    redrawOverlay(null);
-  });
-
-  // Redraw when LWC scrolls or scales
-  if (lwcChart) {
-    lwcChart.timeScale().subscribeVisibleTimeRangeChange(() => redrawOverlay(null));
-    lwcChart.subscribeVisiblePriceScaleInversed(() => redrawOverlay(null));
-  }
-}
-
-function addHLine(price) {
-  // Store as LWC price line (stays correct when scrolling)
-  if (!lwcSeries) return;
-  const pl = lwcSeries.createPriceLine({
-    price,
-    color:    'rgba(255,170,0,0.9)',
-    lineWidth: 1,
-    lineStyle: LightweightCharts.LineStyle.Dashed,
-    axisLabelVisible: true,
-    title: fmtPrice(state.pair, price),
-  });
-  drawings.push({ type: 'hline', priceLine: pl, price });
-  showToast('S/R line → ' + fmtPrice(state.pair, price));
-}
-
-function clearDrawings() {
-  drawings.forEach(d => {
-    if (d.priceLine && lwcSeries) { try { lwcSeries.removePriceLine(d.priceLine); } catch(e){} }
-  });
-  drawings = [];
-  trendP1  = null;
-  dragPoint = null;
-  redrawOverlay(null);
-}
-
-function redrawOverlay(hoverPos) {
-  const dc = document.getElementById('draw-canvas');
-  if (!dc) return;
-  const rect = dc.getBoundingClientRect();
-  if (!rect.width) return;
-  const dpr = window.devicePixelRatio || 1;
-  dc.width  = rect.width  * dpr;
-  dc.height = rect.height * dpr;
-  const ctx = dc.getContext('2d');
-  ctx.scale(dpr, dpr);
-  const W = rect.width, H = rect.height;
-  ctx.clearRect(0, 0, W, H);
-
-  // Draw saved trendlines (stored as pixel % of height → convert via price)
-  drawings.filter(d => d.type === 'trend').forEach(d => {
-    const y1 = lwcSeries ? lwcSeries.priceToCoordinate(d.p1price) : d.y1pct;
-    const y2 = lwcSeries ? lwcSeries.priceToCoordinate(d.p2price) : d.y2pct;
-    if (y1 == null || y2 == null) return;
-    // Extend line across full chart width
-    const dx = d.x2 - d.x1 || 1;
-    const dy = y2 - y1;
-    const slope = dy / dx;
-    const yLeft  = y1 - slope * d.x1;
-    const yRight = y1 + slope * (W - d.x1);
-    ctx.beginPath();
-    ctx.moveTo(0, yLeft);
-    ctx.lineTo(W, yRight);
-    ctx.strokeStyle = '#64c8ff';
-    ctx.lineWidth   = 1.5;
-    ctx.setLineDash([]);
-    ctx.stroke();
-    // Dots at anchor points
-    [{ x: d.x1, y: y1 }, { x: d.x2, y: y2 }].forEach(p => {
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 3, 0, Math.PI*2);
-      ctx.fillStyle = '#64c8ff';
-      ctx.fill();
-    });
-  });
-
-  // Hover preview — hline
-  if (hoverPos && drawTool === 'hline') {
-    const price = posToPrice(hoverPos.y);
-    ctx.beginPath();
-    ctx.setLineDash([4, 4]);
-    ctx.moveTo(0, hoverPos.y); ctx.lineTo(W, hoverPos.y);
-    ctx.strokeStyle = 'rgba(255,170,0,0.5)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    ctx.setLineDash([]);
-    if (price) {
-      ctx.fillStyle = 'rgba(255,170,0,0.8)';
-      ctx.font = '10px JetBrains Mono, monospace';
-      ctx.fillText(fmtPrice(state.pair, price), 6, hoverPos.y - 4);
-    }
-  }
-
-  // Drag preview — trendline
-  if (dragPoint && hoverPos && drawTool === 'trend') {
-    ctx.beginPath();
-    ctx.setLineDash([4, 4]);
-    ctx.moveTo(dragPoint.x, dragPoint.y);
-    ctx.lineTo(hoverPos.x,  hoverPos.y);
-    ctx.strokeStyle = 'rgba(100,200,255,0.6)';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.beginPath();
-    ctx.arc(dragPoint.x, dragPoint.y, 4, 0, Math.PI*2);
-    ctx.fillStyle = '#64c8ff';
-    ctx.fill();
-  }
-}
-
-// ═══════════════════════════════════
-// ANALYSE BAR
-// ═══════════════════════════════════
-function showAnalyseBar(show) {
-  const bar = document.getElementById('analyse-bar');
-  if (bar) bar.style.display = show ? 'block' : 'none';
-}
-
-function updateAnalyseBar(val, total, mode) {
-  const num  = document.getElementById('analyse-bar-num');
-  const fill = document.getElementById('analyse-bar-fill');
-  const lbl  = document.getElementById('analyse-bar-label');
-  const bar  = document.getElementById('analyse-bar');
-  if (!num) return;
-
-  if (mode === 'decide') {
-    num.textContent = val;
-    num.style.color = val <= 3 ? 'var(--down)' : 'var(--gold)';
-    if (fill) { fill.style.width = (val/10*100)+'%'; fill.style.background = val<=3?'var(--down)':'var(--gold)'; }
-    if (lbl)  { lbl.textContent = val>0 ? '⚡ MAKE YOUR CALL — UP or DOWN?' : 'AUTO-VOTING...'; lbl.style.color = val<=3?'var(--down)':'var(--gold)'; }
-    if (bar)  bar.style.animation = 'pulse 0.6s ease-in-out infinite';
-  } else {
-    num.textContent = val;
-    num.style.color = 'var(--accent)';
-    if (fill) { fill.style.width = (val/total*100)+'%'; fill.style.background = 'var(--accent)'; }
-    if (lbl)  { lbl.textContent = val>0 ? '🔍 ANALYSE — study the chart before you predict' : "Time\'s up!"; lbl.style.color = 'var(--accent)'; }
-    if (bar)  bar.style.animation = 'none';
-  }
-}
-
-// ═══════════════════════════════════
-// SCROLL INDICATOR (no-op now — LWC handles scrolling natively)
-// ═══════════════════════════════════
-function updateScrollIndicator() {
-  const el = document.getElementById('chart-tf-label');
-  if (!el) return;
-  const tfLabel = { '1min':'1m', '5min':'5m', '15min':'15m', '1h':'1h' }[state.tf] || state.tf;
-  el.textContent = tfLabel + ' · ' + state.pair;
-  el.style.color = 'var(--muted)';
-}
-
-// ═══════════════════════════════════
-// INIT
-// ═══════════════════════════════════
-selectMode('1v1');
-renderLeaderboard();
-updateExpiryHint();
-
-// Pre-warm LWC chart (hidden, but initialised so it\'s ready when battle starts)
-// We init it lazily on first battle call instead — LWC needs visible container
-
-// Lobby counters drift
-setInterval(() => {
-  ['players-1v1','players-group'].forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const n = parseInt(el.textContent.match(/\d+/)) + Math.floor((Math.random()-0.4)*8);
-    el.textContent = `⬤ ${Math.max(50,n)} waiting`;
-  });
-}, 4000);
-
-// Ticker on landing (simulated — landing has no real pair data yet)
-const fakePrices = { eurusd: 1.08420, gbpusd: 1.26340, usdjpy: 154.820 };
-function updateTicker() {
-  [['eurusd',5],['gbpusd',5],['usdjpy',3]].forEach(([id,dec]) => {
-    fakePrices[id] += (Math.random()-0.499)*(id==='usdjpy'?0.01:0.00005);
-    const el = document.getElementById('tick-'+id);
-    const ce = document.getElementById('tick-'+id+'-chg');
-    if (!el) return;
-    el.textContent = fakePrices[id].toFixed(dec);
-    const base = id==='eurusd'?1.0842:id==='gbpusd'?1.2634:154.82;
-    const chg = (fakePrices[id]-base)/base*100;
-    if (ce) { ce.textContent=(chg>=0?'+':'')+chg.toFixed(3)+'%'; ce.className='ticker-change '+(chg>=0?'up':'down'); }
-  });
-}
-setInterval(updateTicker, 1400);
-updateTicker();
-
-
 </script>
 </body>
 </html>

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact — Traders.io</title>
+<meta name="description" content="Get in touch with Traders.io. Questions, partnerships, or press inquiries — we'd love to hear from you.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#05080e;--surface:#0a0f1a;--border:#131f35;--up:#00e676;--down:#ff3d5a;--gold:#f5c842;--accent:#0ea5e9;--text:#e8f0fe;--muted:#3d5473;--display:'Bebas Neue',sans-serif;--body:'Instrument Sans',sans-serif;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--body);font-size:15px;line-height:1.6;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(14,165,233,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(14,165,233,0.03) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0;}
+
+nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 40px;height:64px;background:rgba(5,8,14,0.85);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);}
+.nav-logo{font-family:var(--display);font-size:28px;letter-spacing:0.1em;color:var(--accent);text-decoration:none;}
+.nav-links{display:flex;gap:32px;list-style:none;}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:13px;font-weight:500;letter-spacing:0.05em;text-transform:uppercase;transition:color 0.2s;}
+.nav-links a:hover{color:var(--text);}
+.nav-links a.active{color:var(--accent);}
+.nav-cta{background:var(--accent);color:#000 !important;padding:8px 20px;border-radius:6px;font-weight:700 !important;}
+@media(max-width:768px){nav{padding:0 20px;}.nav-links{gap:16px;}.nav-links li:not(:last-child):not(:nth-last-child(2)){display:none;}}
+
+.page-header{position:relative;z-index:1;padding:140px 24px 60px;text-align:center;}
+.page-label{font-size:11px;letter-spacing:0.25em;text-transform:uppercase;color:var(--accent);margin-bottom:16px;display:block;}
+.page-title{font-family:var(--display);font-size:clamp(64px,10vw,120px);line-height:0.9;letter-spacing:0.02em;}
+.page-sub{font-size:18px;color:var(--muted);max-width:500px;margin:24px auto 0;line-height:1.7;}
+
+.section{position:relative;z-index:1;padding:60px 24px 100px;}
+.contact-grid{max-width:900px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:start;}
+@media(max-width:640px){.contact-grid{grid-template-columns:1fr;}}
+
+/* Contact cards */
+.contact-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:32px;margin-bottom:16px;transition:border-color 0.2s;}
+.contact-card:hover{border-color:rgba(14,165,233,0.3);}
+.contact-card-icon{font-size:28px;margin-bottom:12px;}
+.contact-card h3{font-family:var(--display);font-size:22px;letter-spacing:0.05em;margin-bottom:8px;}
+.contact-card p{font-size:13px;color:var(--muted);margin-bottom:16px;}
+.contact-card a{color:var(--accent);text-decoration:none;font-size:15px;font-weight:600;transition:color 0.2s;}
+.contact-card a:hover{color:#38bdf8;}
+
+/* Form */
+.contact-form{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:40px;}
+.contact-form h2{font-family:var(--display);font-size:36px;letter-spacing:0.05em;margin-bottom:24px;}
+
+.form-group{margin-bottom:20px;}
+.form-group label{display:block;font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.form-group input,
+.form-group select,
+.form-group textarea{
+  width:100%;background:var(--bg);border:1px solid var(--border);
+  border-radius:8px;padding:12px 16px;color:var(--text);
+  font-family:var(--body);font-size:14px;outline:none;
+  transition:border-color 0.2s;resize:vertical;
+}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus{border-color:var(--accent);}
+.form-group input::placeholder,
+.form-group textarea::placeholder{color:var(--muted);}
+.form-group select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%233d5473' fill='none' stroke-width='2'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;}
+.form-group select option{background:var(--surface);}
+
+.btn-submit{width:100%;background:var(--up);color:#000;border:none;padding:16px;border-radius:8px;font-family:var(--display);font-size:22px;letter-spacing:0.05em;cursor:pointer;transition:all 0.2s;margin-top:8px;}
+.btn-submit:hover{background:#00ff8a;transform:translateY(-1px);box-shadow:0 6px 24px rgba(0,230,118,0.3);}
+
+.success-msg{display:none;text-align:center;padding:24px;background:rgba(0,230,118,0.08);border:1px solid rgba(0,230,118,0.3);border-radius:8px;margin-top:16px;color:var(--up);font-weight:600;}
+
+footer{position:relative;z-index:1;border-top:1px solid var(--border);padding:60px 40px 40px;}
+.footer-inner{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr auto;gap:40px;align-items:start;}
+.footer-brand .logo{font-family:var(--display);font-size:32px;letter-spacing:0.1em;color:var(--accent);display:block;margin-bottom:12px;}
+.footer-brand p{font-size:13px;color:var(--muted);max-width:320px;line-height:1.7;}
+.footer-links{display:flex;gap:48px;}
+.footer-col h4{font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);margin-bottom:16px;}
+.footer-col a{display:block;color:var(--muted);text-decoration:none;font-size:14px;margin-bottom:10px;transition:color 0.2s;}
+.footer-col a:hover{color:var(--text);}
+.footer-bottom{max-width:1100px;margin:40px auto 0;padding-top:24px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted);flex-wrap:wrap;gap:12px;}
+@media(max-width:768px){.footer-inner{grid-template-columns:1fr;}.footer-links{flex-direction:column;gap:24px;}}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">TRADERS.IO</a>
+  <ul class="nav-links">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="about.html">About</a></li>
+    <li><a href="contact.html" class="active">Contact</a></li>
+    <li><a href="battle.html" class="nav-cta">Play Free</a></li>
+  </ul>
+</nav>
+
+<div class="page-header">
+  <span class="page-label">// Get in touch</span>
+  <h1 class="page-title">CONTACT</h1>
+  <p class="page-sub">Questions, partnerships, press inquiries, or just want to talk trading — we're here.</p>
+</div>
+
+<section class="section">
+  <div class="contact-grid">
+
+    <!-- Left: contact info -->
+    <div>
+      <div class="contact-card">
+        <div class="contact-card-icon">📧</div>
+        <h3>GENERAL INQUIRIES</h3>
+        <p>Questions about the platform, features, or your account.</p>
+        <a href="mailto:joey@traders.io">joey@traders.io</a>
+      </div>
+
+      <div class="contact-card">
+        <div class="contact-card-icon">🤝</div>
+        <h3>PARTNERSHIPS</h3>
+        <p>Interested in partnering with Traders.io? We're open to discussions with brokers, data providers, and content creators.</p>
+        <a href="mailto:joey@traders.io?subject=Partnership Inquiry">joey@traders.io</a>
+      </div>
+
+      <div class="contact-card">
+        <div class="contact-card-icon">📰</div>
+        <h3>PRESS & MEDIA</h3>
+        <p>Press kit and media inquiries for journalists and content creators.</p>
+        <a href="mailto:joey@traders.io?subject=Press Inquiry">joey@traders.io</a>
+      </div>
+
+      <div class="contact-card">
+        <div class="contact-card-icon">📍</div>
+        <h3>LOCATION</h3>
+        <p>Traders.io is a digital-first platform operated from the Netherlands. We do not have a physical office open to the public.</p>
+        <span style="color:var(--muted);font-size:14px">The Netherlands 🇳🇱</span>
+      </div>
+    </div>
+
+    <!-- Right: form -->
+    <div class="contact-form">
+      <h2>SEND A MESSAGE</h2>
+
+      <div class="form-group">
+        <label>Your Name</label>
+        <input type="text" id="f-name" placeholder="John Smith" />
+      </div>
+
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="f-email" placeholder="you@example.com" />
+      </div>
+
+      <div class="form-group">
+        <label>Subject</label>
+        <select id="f-subject">
+          <option value="">Select a topic...</option>
+          <option value="general">General Question</option>
+          <option value="bug">Bug Report</option>
+          <option value="partnership">Partnership</option>
+          <option value="press">Press / Media</option>
+          <option value="feature">Feature Request</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Message</label>
+        <textarea id="f-message" rows="5" placeholder="Tell us what's on your mind..."></textarea>
+      </div>
+
+      <button class="btn-submit" onclick="submitForm()">SEND MESSAGE →</button>
+
+      <div class="success-msg" id="success-msg">
+        ✓ Message sent! We'll get back to you within 48 hours.
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <span class="logo">TRADERS.IO</span>
+      <p>A forex trading education platform where traders battle in real-time price prediction challenges.</p>
+    </div>
+    <div class="footer-links">
+      <div class="footer-col">
+        <h4>Platform</h4>
+        <a href="battle.html">Battle Arena</a>
+        <a href="about.html">How It Works</a>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <a href="about.html">About Us</a>
+        <a href="contact.html">Contact</a>
+        <a href="privacy.html">Privacy Policy</a>
+        <a href="terms.html">Terms of Use</a>
+      </div>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>© 2025 Traders.io. All rights reserved.</span>
+    <span>Contact: <a href="mailto:joey@traders.io" style="color:var(--accent);text-decoration:none">joey@traders.io</a></span>
+  </div>
+</footer>
+
+<script>
+function submitForm() {
+  const name    = document.getElementById('f-name').value.trim();
+  const email   = document.getElementById('f-email').value.trim();
+  const subject = document.getElementById('f-subject').value;
+  const message = document.getElementById('f-message').value.trim();
+
+  if (!name || !email || !message) {
+    alert('Please fill in all required fields.');
+    return;
+  }
+  if (!email.includes('@')) {
+    alert('Please enter a valid email address.');
+    return;
+  }
+
+  // Open mailto as fallback (works without backend)
+  const sub = subject ? `[Traders.io] ${subject}` : '[Traders.io] Contact Form';
+  const body = `Name: ${name}\nEmail: ${email}\n\n${message}`;
+  window.location.href = `mailto:joey@traders.io?subject=${encodeURIComponent(sub)}&body=${encodeURIComponent(body)}`;
+
+  document.getElementById('success-msg').style.display = 'block';
+}
+</script>
+
+</body>
+</html>
