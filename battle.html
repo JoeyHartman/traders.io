@@ -14,7 +14,7 @@
   Then uncomment the line below:
   ════════════════════════════════════════════════════════════
 -->
-<script src="/charting_library/charting_library.standalone.js"></script>
+<script src="charting_library/charting_library.standalone.js"></script>
 
 <!--
   ════════════════════════════════════════════════════════════
@@ -795,7 +795,7 @@ function initTVChart(symbol, resolution) {
   tvWidget = new TradingView.widget({
     container:    'tv-chart-container',
     locale:       'en',
-    library_path: '/charting_library/',
+    library_path: 'charting_library/',
     datafeed:     createTVDatafeed(),
     symbol:       symbol,
     interval:     resolution,
