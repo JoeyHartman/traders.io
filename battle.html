@@ -574,7 +574,7 @@ body::before {
 
   <!-- Entry info -->
   <div class="entry-line" id="entry-line" style="display:none">
-    Entry: <span id="entry-price-val">—</span> · PnL: <span id="current-pnl">—</span>
+    Entry: <span id="entry-price-val">—</span>
   </div>
 
   <!-- Vote -->
@@ -1312,8 +1312,12 @@ function castVote(direction) {
   updateVoteBars();
   showAnalyseBar(false);
 
-  if (TV_AVAILABLE) addTVEntryLine(state.entryPrice);
-  else addEntryPriceLine(state.entryPrice);
+  if (TV_AVAILABLE) {
+    addTVEntryLine(state.entryPrice);
+    try { tvWidget.chart().scrollToRealTime(); } catch(e) {}
+  } else {
+    addEntryPriceLine(state.entryPrice);
+  }
   setTimeout(() => startReplay(), 500);
 }
 
@@ -1338,16 +1342,15 @@ function startReplay() {
     if (TV_AVAILABLE) appendTVCandle(candles[i]);
     else appendLWCCandle(candles[i]);
 
-    const prev = i > 0 ? candles[i-1].c : state.entryPrice;
-    updatePriceDisplay(candles[i].c, prev);
-
-    // Live PnL
+    // PnL from entry (direction-adjusted) shown in the price display
     const diff = candles[i].c - state.entryPrice;
     const pips = (state.symbol.includes('JPY') ? diff*100 : diff*10000);
     const dir  = state.vote === 'up' ? 1 : -1;
     const pnl  = pips * dir;
-    const pnlEl = document.getElementById('current-pnl');
-    if (pnlEl) { pnlEl.textContent = (pnl>=0?'+':'')+pnl.toFixed(1)+' pips'; pnlEl.style.color = pnl>=0?'var(--up)':'var(--down)'; }
+    const el    = document.getElementById('price-big');
+    const chgEl = document.getElementById('price-change-display');
+    if (el) { el.textContent = fmtPrice(state.symbol, candles[i].c); el.className = 'price-big ' + (pnl >= 0 ? 'up' : 'down'); }
+    if (chgEl) { chgEl.textContent = (pnl>=0?'+':'')+pnl.toFixed(1)+' pips'; chgEl.style.color = pnl>=0?'var(--up)':'var(--down)'; }
 
     i++;
     setTimeout(playNext, CONFIG.REPLAY_SPEED_MS);
