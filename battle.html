@@ -889,20 +889,29 @@ function loadLWCCandles(candles) {
 function addTVEntryLine(price) {
   if (!tvWidget) return;
   tvWidget.onChartReady(() => {
-    if (tvEntryLine) { try { tvEntryLine.remove(); } catch(e){} tvEntryLine = null; }
-    tvEntryLine = tvWidget.chart().createPositionLine()
-      .setText('ENTRY')
-      .setPrice(price)
-      .setLineColor('#ffd740')
-      .setBodyBackgroundColor('#ffd740')
-      .setBodyBorderColor('#ffd740')
-      .setBodyTextColor('#000')
-      .setQuantity('');
+    if (tvEntryLine) { try { tvWidget.chart().removeEntity(tvEntryLine); } catch(e){} tvEntryLine = null; }
+    try {
+      const step = ({'1':60,'5':300,'15':900,'60':3600,'240':14400,'D':86400}[state.tf] || 300);
+      const t = Math.floor(tvNextBarTime / 1000) - step;
+      tvEntryLine = tvWidget.chart().createShape(
+        { time: t, price: price },
+        {
+          shape: 'horizontal_line',
+          lock: true,
+          disableSelection: true,
+          disableSave: true,
+          overrides: { linecolor: '#ffd740', linewidth: 1, linestyle: 2, showLabel: true, text: 'ENTRY', textcolor: '#ffd740' }
+        }
+      );
+    } catch(e) { console.warn('TV entry line unavailable:', e.message); }
   });
 }
 
 function removeTVEntryLine() {
-  if (tvEntryLine) { try { tvEntryLine.remove(); } catch(e){} tvEntryLine = null; }
+  if (tvEntryLine && tvWidget) {
+    try { tvWidget.chart().removeEntity(tvEntryLine); } catch(e){}
+    tvEntryLine = null;
+  }
 }
 
 function appendTVCandle(candle) {
