@@ -630,8 +630,8 @@ const CONFIG = {
   ANALYSE_SECONDS: 15,
   DECIDE_SECONDS:  10,
   REPLAY_SPEED_MS: 600,
-  CANDLES_HISTORY: 100,  // bars shown before prediction point
-  CANDLES_FETCH:   500,
+  CANDLES_HISTORY: 100,
+  CANDLES_FETCH:   800,
 };
 
 // ════════════════════════════════════════════════════════════════
@@ -696,6 +696,7 @@ let drawings   = [];
 let drawTool   = 'none';
 let tvRealtimeCallback = null;
 let tvNextBarTime = 0;
+let tvEntryLine = null;
 
 // ── TradingView datafeed (UDF compatible) ──
 function createTVDatafeed() {
@@ -736,55 +737,25 @@ function createTVDatafeed() {
         data_status:   'streaming',
       }), 0);
     },
-    getBars: async (symbolInfo, resolution, periodParams, onResult, onError) => {
-      const { from, to, countBack } = periodParams;
-      const sym = symbolInfo.name;
-      const pair = sym.slice(0,3) + '/' + sym.slice(3);
-      const tfMap = {'1':'1min','5':'5min','15':'15min','60':'1h','240':'4h','D':'1day'};
-      const interval = tfMap[resolution] || '5min';
+    getBars: (symbolInfo, resolution, periodParams, onResult) => {
+      const { countBack } = periodParams;
+      const sym  = symbolInfo.name.toUpperCase().replace('/', '');
+      const key  = `${sym}_${resolution}`;
+      const data = state.dataCache[key];
 
-      // Sequential fake timestamps so no real dates appear on x-axis
-      const resSeconds = {'1':60,'5':300,'15':900,'60':3600,'240':14400,'D':86400};
-      const step = resSeconds[resolution] || 300;
-      const baseTime = 946684800; // Jan 1 2000 — clearly not "now"
+      if (!data || !data.length) { onResult([], { noData: true }); return; }
 
-      try {
-        const url = `${CONFIG.DATAFEED_URL}/history?symbol=${sym}&resolution=${resolution}&from=${from}&to=${to}&countback=${countBack || 300}`;
-        let bars = [];
+      const step  = ({'1':60,'5':300,'15':900,'60':3600,'240':14400,'D':86400}[resolution] || 300);
+      const end   = state.cursorIndex;
+      const start = Math.max(0, end - (countBack || CONFIG.CANDLES_HISTORY));
 
-        try {
-          const res  = await fetch(url);
-          const data = await res.json();
-          if (data.s === 'ok') {
-            bars = data.t.map((t, i) => ({
-              time: (baseTime + i * step) * 1000,
-              open: data.o[i], high: data.h[i],
-              low:  data.l[i], close: data.c[i],
-              volume: data.v ? data.v[i] : 0,
-            }));
-          }
-        } catch(e) {
-          // Fallback: fetch directly from Twelve Data
-          const tdUrl = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(pair)}&interval=${interval}&outputsize=500&apikey=${CONFIG.TWELVE_DATA_KEY}`;
-          const tdRes  = await fetch(tdUrl);
-          const tdData = await tdRes.json();
-          if (tdData.values) {
-            bars = tdData.values.reverse().map((v, i) => ({
-              time:   (baseTime + i * step) * 1000,
-              open:   parseFloat(v.open),
-              high:   parseFloat(v.high),
-              low:    parseFloat(v.low),
-              close:  parseFloat(v.close),
-              volume: 0,
-            }));
-          }
-        }
+      const bars = data.slice(start, end).map((c, i) => ({
+        time:  (946684800 + (start + i) * step) * 1000,
+        open:  c.o, high: c.h, low: c.l, close: c.c, volume: 0,
+      }));
 
-        if (bars.length > 0) tvNextBarTime = bars[bars.length - 1].time + step * 1000;
-        onResult(bars, { noData: bars.length === 0 });
-      } catch(e) {
-        onError(e.message);
-      }
+      if (bars.length > 0) tvNextBarTime = bars[bars.length - 1].time + step * 1000;
+      onResult(bars, { noData: bars.length === 0 });
     },
     subscribeBars: (symbolInfo, resolution, onRealtimeCallback) => {
       tvRealtimeCallback = onRealtimeCallback;
@@ -804,8 +775,12 @@ function initTVChart(symbol, resolution) {
   document.getElementById('lwc-container').style.display = 'none';
 
   if (tvWidget) {
+    if (tvEntryLine) { try { tvEntryLine.remove(); } catch(e){} tvEntryLine = null; }
+    tvRealtimeCallback = null;
+    tvNextBarTime = 0;
     tvWidget.remove();
     tvWidget = null;
+    document.getElementById('tv-chart-container').innerHTML = '';
   }
 
   tvWidget = new TradingView.widget({
@@ -909,6 +884,25 @@ function loadLWCCandles(candles) {
     lwcChart.timeScale().setVisibleLogicalRange({ from: allHistory.length - 100, to: allHistory.length + 5 });
   }
   if (state.entryPrice && !entryPriceLine) addEntryPriceLine(state.entryPrice);
+}
+
+function addTVEntryLine(price) {
+  if (!tvWidget) return;
+  tvWidget.onChartReady(() => {
+    if (tvEntryLine) { try { tvEntryLine.remove(); } catch(e){} tvEntryLine = null; }
+    tvEntryLine = tvWidget.chart().createPositionLine()
+      .setText('ENTRY')
+      .setPrice(price)
+      .setLineColor('#ffd740')
+      .setBodyBackgroundColor('#ffd740')
+      .setBodyBorderColor('#ffd740')
+      .setBodyTextColor('#000')
+      .setQuantity('');
+  });
+}
+
+function removeTVEntryLine() {
+  if (tvEntryLine) { try { tvEntryLine.remove(); } catch(e){} tvEntryLine = null; }
 }
 
 function appendTVCandle(candle) {
@@ -1157,6 +1151,7 @@ function startBattle() {
   state.entryPrice  = null;
   state.phase       = 'analyse';
   state._replayIdx  = 0;
+  removeTVEntryLine();
   state.upVotes     = Math.floor(Math.random()*3)+1;
   state.downVotes   = Math.floor(Math.random()*3)+1;
   state.battleCount++;
@@ -1295,7 +1290,8 @@ function castVote(direction) {
   updateVoteBars();
   showAnalyseBar(false);
 
-  if (!TV_AVAILABLE) addEntryPriceLine(state.entryPrice);
+  if (TV_AVAILABLE) addTVEntryLine(state.entryPrice);
+  else addEntryPriceLine(state.entryPrice);
   setTimeout(() => startReplay(), 500);
 }
 
