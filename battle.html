@@ -281,6 +281,7 @@ body::before {
 .chart-area {
   flex: 1; display: flex; flex-direction: column;
   padding: 12px 16px 0; overflow: hidden;
+  min-height: 0;
 }
 
 .chart-toolbar {
@@ -306,7 +307,8 @@ body::before {
 /* TradingView chart container */
 #tv-chart-container {
   flex: 1;
-  min-height: 260px;
+  height: 0;
+  min-height: 300px;
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid var(--border);
@@ -315,7 +317,8 @@ body::before {
 /* Fallback LWC container (shown until TV library loaded) */
 #lwc-container {
   flex: 1;
-  min-height: 260px;
+  height: 0;
+  min-height: 300px;
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid var(--border);
@@ -733,8 +736,12 @@ function createTVDatafeed() {
       const tfMap = {'1':'1min','5':'5min','15':'15min','60':'1h','240':'4h','D':'1day'};
       const interval = tfMap[resolution] || '5min';
 
+      // Sequential fake timestamps so no real dates appear on x-axis
+      const resSeconds = {'1':60,'5':300,'15':900,'60':3600,'240':14400,'D':86400};
+      const step = resSeconds[resolution] || 300;
+      const baseTime = 946684800; // Jan 1 2000 — clearly not "now"
+
       try {
-        // Try Railway datafeed first
         const url = `${CONFIG.DATAFEED_URL}/history?symbol=${sym}&resolution=${resolution}&from=${from}&to=${to}&countback=${countBack || 300}`;
         let bars = [];
 
@@ -743,7 +750,7 @@ function createTVDatafeed() {
           const data = await res.json();
           if (data.s === 'ok') {
             bars = data.t.map((t, i) => ({
-              time: t * 1000,
+              time: (baseTime + i * step) * 1000,
               open: data.o[i], high: data.h[i],
               low:  data.l[i], close: data.c[i],
               volume: data.v ? data.v[i] : 0,
@@ -755,17 +762,14 @@ function createTVDatafeed() {
           const tdRes  = await fetch(tdUrl);
           const tdData = await tdRes.json();
           if (tdData.values) {
-            bars = tdData.values.reverse().map(v => {
-              const dt = new Date(v.datetime + (v.datetime.length === 16 ? ':00Z' : 'Z'));
-              return {
-                time:   dt.getTime(),
-                open:   parseFloat(v.open),
-                high:   parseFloat(v.high),
-                low:    parseFloat(v.low),
-                close:  parseFloat(v.close),
-                volume: 0,
-              };
-            });
+            bars = tdData.values.reverse().map((v, i) => ({
+              time:   (baseTime + i * step) * 1000,
+              open:   parseFloat(v.open),
+              high:   parseFloat(v.high),
+              low:    parseFloat(v.low),
+              close:  parseFloat(v.close),
+              volume: 0,
+            }));
           }
         }
 
@@ -830,7 +834,6 @@ function initTVChart(symbol, resolution) {
       'display_market_status',
     ],
     enabled_features: [
-      'study_templates',
       'side_toolbar_in_fullscreen_mode',
       'drawing_templates',
     ],
