@@ -774,13 +774,21 @@ function initTVChart(symbol, resolution) {
   document.getElementById('tv-chart-container').style.display = 'block';
   document.getElementById('lwc-container').style.display = 'none';
 
+  tvRealtimeCallback = null;
+  tvNextBarTime = 0;
+
   if (tvWidget) {
-    if (tvEntryLine) { try { tvEntryLine.remove(); } catch(e){} tvEntryLine = null; }
-    tvRealtimeCallback = null;
-    tvNextBarTime = 0;
-    tvWidget.remove();
-    tvWidget = null;
-    document.getElementById('tv-chart-container').innerHTML = '';
+    // Reuse existing widget — just reset its data so getBars is called again
+    removeTVEntryLine();
+    tvWidget.onChartReady(() => {
+      try { tvWidget.chart().resetData(); } catch(e) {
+        // Fallback: recreate if resetData not available
+        tvWidget.remove(); tvWidget = null;
+        document.getElementById('tv-chart-container').innerHTML = '';
+        initTVChart(symbol, resolution);
+      }
+    });
+    return;
   }
 
   tvWidget = new TradingView.widget({
@@ -919,6 +927,7 @@ function appendTVCandle(candle) {
   const step = ({'1':60,'5':300,'15':900,'60':3600,'240':14400,'D':86400}[state.tf] || 300) * 1000;
   tvRealtimeCallback({ time: tvNextBarTime, open: candle.o, high: candle.h, low: candle.l, close: candle.c, volume: 0 });
   tvNextBarTime += step;
+  try { tvWidget.chart().scrollToRealTime(); } catch(e) {}
 }
 
 function appendLWCCandle(candle) {
@@ -1001,7 +1010,10 @@ async function ensureData() {
     const controller = new AbortController();
     setTimeout(() => controller.abort(), 6000);
 
-    const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(pair)}&interval=${interval}&outputsize=${CONFIG.CANDLES_FETCH}&apikey=${CONFIG.TWELVE_DATA_KEY}`;
+    // Random historical period: 30–700 days ago for maximum variety
+    const daysBack = Math.floor(Math.random() * 670) + 30;
+    const endDate = new Date(Date.now() - daysBack * 86400000).toISOString().split('T')[0];
+    const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(pair)}&interval=${interval}&outputsize=${CONFIG.CANDLES_FETCH}&end_date=${endDate}&apikey=${CONFIG.TWELVE_DATA_KEY}`;
     const res  = await fetch(url, { signal: controller.signal });
     const json = await res.json();
 
@@ -1147,6 +1159,7 @@ function updateExpiryHint() {
 async function findMatch() {
   const btn = document.querySelector('[onclick="findMatch()"]');
   if (btn) { btn.textContent = '⏳ Loading...'; btn.disabled = true; }
+  delete state.dataCache[cacheKey()]; // fresh historical period each match
   await ensureData();
   if (btn) { btn.textContent = 'FIND MATCH →'; btn.disabled = false; }
   startBattle();
@@ -1434,7 +1447,11 @@ function showResultScreen(won, pips, priceWentUp) {
   showScreen('result');
 }
 
-function playAgain() { startBattle(); }
+async function playAgain() {
+  delete state.dataCache[cacheKey()]; // fresh data on rematch too
+  await ensureData();
+  startBattle();
+}
 
 function shareResult() {
   const r = state.lastResult;
