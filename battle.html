@@ -258,18 +258,18 @@ body::before {
 ══════════════════════════════════ */
 .battle-nav {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 20px; border-bottom: 1px solid var(--border);
+  padding: 6px 16px; border-bottom: 1px solid var(--border);
   background: var(--surface); flex-shrink: 0;
 }
 .battle-pair-display { font-family: var(--font-display); font-size: 22px; font-weight: 900; letter-spacing: 0.05em; }
-.battle-timer { font-family: var(--font-display); font-size: 36px; font-weight: 900; min-width: 60px; text-align: center; transition: color 0.3s; }
+.battle-timer { font-family: var(--font-display); font-size: 28px; font-weight: 900; min-width: 48px; text-align: center; transition: color 0.3s; }
 .timer-normal  { color: var(--text); }
 .timer-warning { color: var(--gold); }
 .timer-danger  { color: var(--down); animation: pulse 0.5s ease-in-out infinite; }
 
 .opponent-bar {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 20px; background: var(--surface2);
+  padding: 5px 16px; background: var(--surface2);
   border-bottom: 1px solid var(--border); font-size: 12px;
 }
 .opp-info { display: flex; align-items: center; gap: 10px; }
@@ -281,7 +281,7 @@ body::before {
 /* ── CHART AREA ── */
 .chart-area {
   flex: 1; display: flex; flex-direction: column;
-  padding: 12px 16px 0; overflow: hidden;
+  padding: 4px 8px 0; overflow: hidden;
   min-height: 0;
 }
 
@@ -341,10 +341,10 @@ body::before {
 
 /* Vote area */
 .vote-area {
-  padding: 12px 0 16px; border-top: 1px solid var(--border);
+  padding: 6px 0 10px; border-top: 1px solid var(--border);
   background: var(--surface); flex-shrink: 0;
 }
-.vote-label { text-align: center; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+.vote-label { text-align: center; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
 .vote-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 480px; margin: 0 auto; padding: 0 16px; }
 .vote-voted-display { text-align: center; padding: 14px; font-family: var(--font-display); font-size: 20px; font-weight: 800; }
 .voted-up   { color: var(--up); }
@@ -363,8 +363,8 @@ body::before {
 #replay-progress-fill { height: 100%; background: var(--gold); width: 0%; transition: width 0.55s ease; }
 
 /* Price display */
-.price-row { display: flex; align-items: baseline; gap: 12px; justify-content: center; padding: 8px 0 4px; }
-.price-big  { font-family: var(--font-display); font-size: clamp(32px,6vw,52px); font-weight: 900; line-height: 1; transition: color 0.3s; }
+.price-row { display: flex; align-items: baseline; gap: 12px; justify-content: center; padding: 2px 0; }
+.price-big  { font-family: var(--font-display); font-size: clamp(22px,4vw,34px); font-weight: 900; line-height: 1; transition: color 0.3s; }
 .price-big.up   { color: var(--up); }
 .price-big.down { color: var(--down); }
 .price-big.neutral { color: var(--text); }
@@ -664,6 +664,10 @@ const state = {
 const decimals = { 'EURUSD':5,'GBPUSD':5,'AUDUSD':5,'NZDUSD':5,'USDCHF':5,'USDCAD':5,'EURGBP':5,'USDJPY':3,'EURJPY':3,'GBPJPY':3 };
 function fmtPrice(sym, p) { return parseFloat(p).toFixed(decimals[sym] || 5); }
 function cacheKey() { return `${state.symbol}_${state.tf}`; }
+function randomCursor(dataLen) {
+  const max = dataLen - 60;
+  return Math.floor(Math.random() * Math.max(1, max - CONFIG.CANDLES_HISTORY)) + CONFIG.CANDLES_HISTORY;
+}
 
 // ════════════════════════════════════════════════════════════════
 // TRADINGVIEW ADVANCED CHARTS INTEGRATION
@@ -684,12 +688,14 @@ function cacheKey() { return `${state.symbol}_${state.tf}`; }
 
 const TV_AVAILABLE = typeof TradingView !== 'undefined' && TradingView.widget;
 
-let tvWidget   = null;   // TradingView widget instance
-let lwcChart   = null;   // Lightweight Charts fallback
+let tvWidget   = null;
+let lwcChart   = null;
 let lwcSeries  = null;
 let entryPriceLine = null;
 let drawings   = [];
 let drawTool   = 'none';
+let tvRealtimeCallback = null;
+let tvNextBarTime = 0;
 
 // ── TradingView datafeed (UDF compatible) ──
 function createTVDatafeed() {
@@ -774,13 +780,18 @@ function createTVDatafeed() {
           }
         }
 
+        if (bars.length > 0) tvNextBarTime = bars[bars.length - 1].time + step * 1000;
         onResult(bars, { noData: bars.length === 0 });
       } catch(e) {
         onError(e.message);
       }
     },
-    subscribeBars:   () => {},
-    unsubscribeBars: () => {},
+    subscribeBars: (symbolInfo, resolution, onRealtimeCallback) => {
+      tvRealtimeCallback = onRealtimeCallback;
+    },
+    unsubscribeBars: () => {
+      tvRealtimeCallback = null;
+    },
   };
 }
 
@@ -900,6 +911,13 @@ function loadLWCCandles(candles) {
   if (state.entryPrice && !entryPriceLine) addEntryPriceLine(state.entryPrice);
 }
 
+function appendTVCandle(candle) {
+  if (!tvRealtimeCallback) return;
+  const step = ({'1':60,'5':300,'15':900,'60':3600,'240':14400,'D':86400}[state.tf] || 300) * 1000;
+  tvRealtimeCallback({ time: tvNextBarTime, open: candle.o, high: candle.h, low: candle.l, close: candle.c, volume: 0 });
+  tvNextBarTime += step;
+}
+
 function appendLWCCandle(candle) {
   if (!lwcSeries) return;
   const timeIdx = state.cursorIndex + (state._replayIdx || 0) + 1;
@@ -989,13 +1007,13 @@ async function ensureData() {
         o: parseFloat(v.open), h: parseFloat(v.high),
         l: parseFloat(v.low),  c: parseFloat(v.close),
       }));
-      state.cursorIndex = CONFIG.CANDLES_HISTORY;
+      state.cursorIndex = randomCursor(state.dataCache[key].length);
       return;
     }
   } catch(e) { /* fall through to simulated */ }
 
   state.dataCache[key] = generateSimulatedData();
-  state.cursorIndex = CONFIG.CANDLES_HISTORY;
+  state.cursorIndex = randomCursor(state.dataCache[key].length);
 }
 
 function generateSimulatedData() {
@@ -1147,10 +1165,7 @@ function startBattle() {
 
   if (state.battleCount > 1) {
     const data = state.dataCache[cacheKey()];
-    if (data) {
-      state.cursorIndex += state.expiry;
-      if (state.cursorIndex + state.expiry + 5 >= data.length) state.cursorIndex = CONFIG.CANDLES_HISTORY;
-    }
+    if (data) state.cursorIndex = randomCursor(data.length);
   }
 
   state.visibleCandles = getVisibleCandles();
@@ -1302,7 +1317,8 @@ function startReplay() {
     document.getElementById('battle-timer').className = 'battle-timer ' +
       (i < candles.length*0.5 ? 'timer-normal' : i < candles.length*0.8 ? 'timer-warning' : 'timer-danger');
 
-    if (!TV_AVAILABLE) appendLWCCandle(candles[i]);
+    if (TV_AVAILABLE) appendTVCandle(candles[i]);
+    else appendLWCCandle(candles[i]);
 
     const prev = i > 0 ? candles[i-1].c : state.entryPrice;
     updatePriceDisplay(candles[i].c, prev);
