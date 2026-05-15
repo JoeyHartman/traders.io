@@ -923,11 +923,13 @@ function removeTVEntryLine() {
 }
 
 function appendTVCandle(candle) {
-  if (!tvRealtimeCallback) return;
-  const step = ({'1':60,'5':300,'15':900,'60':3600,'240':14400,'D':86400}[state.tf] || 300) * 1000;
-  tvRealtimeCallback({ time: tvNextBarTime, open: candle.o, high: candle.h, low: candle.l, close: candle.c, volume: 0 });
-  tvNextBarTime += step;
-  try { tvWidget.chart().scrollToRealTime(); } catch(e) {}
+  if (!tvWidget) return;
+  // Extend the visible slice by one bar and force TradingView to reload
+  state.cursorIndex++;
+  try {
+    tvWidget.chart().resetData();
+    setTimeout(() => { try { tvWidget.chart().scrollToRealTime(); } catch(e){} }, 80);
+  } catch(e) {}
 }
 
 function appendLWCCandle(candle) {
