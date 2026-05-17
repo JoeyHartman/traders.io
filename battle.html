@@ -576,10 +576,11 @@ const state = {
   symbol:    'EURUSD',
   pair:      'EUR/USD',
   // Data
-  dataCache: {},   // "EURUSD_2022Q3" → {m1,m5,...}
-  quarterKey: null,
-  cursorIndex: 0,
-  visibleCount: 200,  // bars shown before entry point
+  dataCache:    {},   // quarter cache
+  scenarioData: null, // merged multi-quarter data for current battle
+  scenarioKey:  null,
+  cursorIndex:  0,
+  visibleCount: 500,  // bars shown before entry point
   // Battle
   entryPrice: null,
   slPrice:    null,
@@ -665,63 +666,76 @@ function goLobby() { showScreen('lobby'); }
 // ════════════════════════════════════════════════════
 // DATA LOADING
 // ════════════════════════════════════════════════════
-async function loadQuarter() {
-  // Pick a random quarter from 2010-2024 (avoid very old or very recent)
-  const year = 2010 + Math.floor(Math.random() * 14);
-  const q    = 1 + Math.floor(Math.random() * 4);
-  const key  = `EURUSD_${year}Q${q}`;
+// All available quarters 2010-2024
+const ALL_QUARTERS = [];
+for(let y=2010; y<=2024; y++) for(let q=1; q<=4; q++) ALL_QUARTERS.push(`EURUSD_${y}Q${q}`);
 
-  if (state.dataCache[key]) {
-    state.quarterKey = key;
-    return true;
-  }
-
-  try {
-    const url = CFG.DATA_BASE + key + '.json.gz';
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('fetch failed');
-
-    // Decompress gzip in browser using DecompressionStream
-    const compressed = await res.arrayBuffer();
-    let raw;
-    if (typeof DecompressionStream !== 'undefined') {
-      const ds = new DecompressionStream('gzip');
-      const writer = ds.writable.getWriter();
-      writer.write(compressed); writer.close();
-      const chunks = [];
-      const reader = ds.readable.getReader();
-      while(true) {
-        const {done,value} = await reader.read();
-        if(done) break;
-        chunks.push(value);
-      }
-      const total = chunks.reduce((a,c) => a+c.length, 0);
-      const buf = new Uint8Array(total);
-      let off = 0;
-      chunks.forEach(c => { buf.set(c,off); off+=c.length; });
-      raw = new TextDecoder().decode(buf);
-    } else {
-      // Fallback for older browsers
-      raw = await res.text();
+async function decompressGZ(arrayBuffer) {
+  if (typeof DecompressionStream !== 'undefined') {
+    const ds = new DecompressionStream('gzip');
+    const writer = ds.writable.getWriter();
+    writer.write(arrayBuffer); writer.close();
+    const chunks = [];
+    const reader = ds.readable.getReader();
+    while(true) {
+      const {done,value} = await reader.read();
+      if(done) break;
+      chunks.push(value);
     }
+    const total = chunks.reduce((a,c) => a+c.length, 0);
+    const buf = new Uint8Array(total);
+    let off = 0;
+    chunks.forEach(c => { buf.set(c,off); off+=c.length; });
+    return new TextDecoder().decode(buf);
+  }
+  return new TextDecoder().decode(arrayBuffer);
+}
 
+async function fetchQuarter(key) {
+  if(state.dataCache[key]) return state.dataCache[key];
+  try {
+    const res = await fetch(CFG.DATA_BASE + key + '.json.gz');
+    if(!res.ok) throw new Error('fetch failed');
+    const raw  = await decompressGZ(await res.arrayBuffer());
     const data = JSON.parse(raw);
-    // Convert arrays back to objects
     const parsed = {};
     for(const [tf, bars] of Object.entries(data)) {
       parsed[tf] = bars.map(b => ({o:b[0],h:b[1],l:b[2],c:b[3]}));
     }
     state.dataCache[key] = parsed;
-    state.quarterKey = key;
-    return true;
+    return parsed;
   } catch(e) {
-    console.error('loadQuarter failed:', e);
-    // Generate simulated data as fallback
-    state.dataCache[key] = generateSimData();
-    state.quarterKey = key;
-    return true;
+    console.error('fetchQuarter failed:', key, e);
+    return null;
   }
 }
+
+async function loadScenario() {
+  // Pick a random starting quarter with room for 4 consecutive quarters
+  const startIdx = Math.floor(Math.random() * (ALL_QUARTERS.length - 4));
+  const keys = ALL_QUARTERS.slice(startIdx, startIdx + 4);
+
+  // Fetch all 4 quarters in parallel
+  const results = await Promise.all(keys.map(k => fetchQuarter(k)));
+
+  // Merge all timeframes across 4 quarters
+  const merged = { m1:[], m5:[], m15:[], h1:[], h4:[], d1:[], w1:[] };
+  for(const data of results) {
+    if(!data) continue;
+    for(const tf of Object.keys(merged)) {
+      if(data[tf]) merged[tf] = merged[tf].concat(data[tf]);
+    }
+  }
+
+  // Use simulated data as fallback if fetch failed
+  const hasData = merged.m1.length > 0;
+  state.scenarioData = hasData ? merged : generateSimData();
+  state.scenarioKey  = keys[1]; // label by middle quarter
+  return true;
+}
+
+// Keep loadQuarter as alias for compatibility
+async function loadQuarter() { return loadScenario(); }
 
 function generateSimData() {
   const bases = {EURUSD:1.0842,GBPUSD:1.2634,USDJPY:154.82,AUDUSD:0.6418,USDCHF:0.9012,USDCAD:1.3645};
@@ -751,14 +765,15 @@ function agg(bars, n) {
 
 function getDataForTF(tf) {
   const key = TF_TO_DATA[tf] || 'm15';
-  const data = state.dataCache[state.quarterKey];
-  return data ? data[key] : [];
+  return state.scenarioData ? (state.scenarioData[key] || []) : [];
 }
 
 function pickCursor(tf) {
   const bars = getDataForTF(tf);
-  const min  = state.visibleCount + 10;
-  const max  = bars.length - CFG.MAX_BARS - 10;
+  // Use 25-75% of data as valid cursor range
+  // This ensures plenty of history before AND replay candles after
+  const min = Math.floor(bars.length * 0.25);
+  const max = Math.floor(bars.length * 0.75) - CFG.MAX_BARS;
   if(max <= min) return min;
   return min + Math.floor(Math.random() * (max - min));
 }
@@ -794,24 +809,27 @@ function createDatafeed() {
       const bars = getDataForTF(resolution);
       if(!bars.length) { onResult([], {noData:true}); return; }
 
-      // Map to TF-relative cursor
       const cursor = tfCursor(resolution);
-      const count  = periodParams.countBack || state.visibleCount;
-      const start  = Math.max(0, cursor - count);
-      const slice  = bars.slice(start, cursor);
 
-      // Assign fake timestamps (index-based, no real dates)
-      const stepMs = (TF_MINS[resolution]||15) * 60000;
-      const baseTs = 946684800000; // 2000-01-01 as anchor
-      const result = slice.map((b,i) => ({
-        time:   (baseTs + (start+i) * stepMs) / 1000,
+      // Request as many bars as available up to cursor
+      // countBack may be small on first call — always serve at least all history up to cursor
+      const requested = Math.max(periodParams.countBack || 500, 500);
+      const start     = Math.max(0, cursor - requested);
+      const slice     = bars.slice(start, cursor);
+
+      if(!slice.length) { onResult([], {noData:true}); return; }
+
+      // Consistent fake timestamps — same step per TF, same anchor across all TFs
+      const stepSec   = (TF_MINS[resolution] || 15) * 60;
+      const anchorSec = 1000000000;
+
+      const result = slice.map((b, i) => ({
+        time:   anchorSec + (start + i) * stepSec,
         open:   b.o, high: b.h, low: b.l, close: b.c, volume: 0,
       }));
 
-      if(result.length) {
-        tvNextBarIdx = cursor;
-      }
-      onResult(result, {noData: result.length === 0});
+      tvNextBarIdx = cursor;
+      onResult(result, {noData: false});
     },
     subscribeBars: (_, __, onRealtimeCb) => { tvRealtimeCb = onRealtimeCb; },
     unsubscribeBars: () => { tvRealtimeCb = null; },
@@ -991,7 +1009,7 @@ async function findMatch() {
   const btn = document.getElementById('find-btn');
   btn.textContent = '⏳ Loading data...'; btn.disabled = true;
 
-  await loadQuarter();
+  await loadScenario();
 
   btn.textContent = 'FIND MATCH →'; btn.disabled = false;
   startBattle();
