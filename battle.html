@@ -819,9 +819,9 @@ function createDatafeed() {
 
       if(!slice.length) { onResult([], {noData:true}); return; }
 
-      // Consistent fake timestamps — same step per TF, same anchor across all TFs
+      // Use 2020-01-01 as anchor — recent date TradingView handles correctly
       const stepSec   = (TF_MINS[resolution] || 15) * 60;
-      const anchorSec = 1000000000;
+      const anchorSec = 1577836800; // 2020-01-01 00:00:00 UTC
 
       const result = slice.map((b, i) => ({
         time:   anchorSec + (start + i) * stepSec,
@@ -829,7 +829,8 @@ function createDatafeed() {
       }));
 
       tvNextBarIdx = cursor;
-      onResult(result, {noData: false});
+      // Tell TV there's no more data before start=0
+      onResult(result, {noData: start === 0});
     },
     subscribeBars: (_, __, onRealtimeCb) => { tvRealtimeCb = onRealtimeCb; },
     unsubscribeBars: () => { tvRealtimeCb = null; },
@@ -899,11 +900,15 @@ function initTV() {
       }
     });
     // Add click handler for SL/TP placement
-    state.tvWidget.chart().onChartClick(({ price }) => {
-      if(state.phase !== 'analyse' && state.phase !== 'lockin') return;
-      if(state.locked) return;
-      handleChartClick(price);
-    });
+    try {
+      state.tvWidget.chart().subscribeClick(({ price }) => {
+        if(state.phase !== 'analyse' && state.phase !== 'lockin') return;
+        if(state.locked) return;
+        if(price) handleChartClick(price);
+      });
+    } catch(e) {
+      console.log('subscribeClick not available');
+    }
   });
 }
 
@@ -1248,11 +1253,10 @@ function startReplay() {
       }
     }
 
-    // Append candle to TV chart
-    // CRITICAL: timestamp must use same anchorSec and stepSec as getBars
+    // Append candle to TV chart — MUST use same anchor as getBars
     if(tvRealtimeCb) {
       const stepSec   = (TF_MINS[state.entryTF] || 15) * 60;
-      const anchorSec = 1000000000; // must match getBars anchor exactly
+      const anchorSec = 1577836800; // 2020-01-01 — same as getBars
       tvRealtimeCb({
         time:   anchorSec + (state.cursorIndex + i) * stepSec,
         open:   c.o, high: c.h, low: c.l, close: c.c, volume: 0,
