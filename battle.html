@@ -809,20 +809,26 @@ function createDatafeed() {
       const bars = getDataForTF(resolution);
       if(!bars.length) { onResult([], {noData:true}); return; }
 
-      const cursor = tfCursor(resolution);
+      const cursor    = tfCursor(resolution);
       if(cursor <= 0) { onResult([], {noData:true}); return; }
-
-      // Limit to 1000 bars per call — TV paginates automatically for more
-      const MAX_PER_CALL = 1000;
-      const count  = Math.min(periodParams.countBack || MAX_PER_CALL, MAX_PER_CALL);
-      const end    = cursor;
-      const start  = Math.max(0, end - count);
-      const slice  = bars.slice(start, end);
-
-      if(!slice.length) { onResult([], {noData: start <= 0}); return; }
 
       const stepSec   = (TF_MINS[resolution] || 15) * 60;
       const anchorSec = 1000000000;
+      const { from, to, countBack } = periodParams;
+
+      let start, end;
+      if(from !== undefined && to !== undefined) {
+        start = Math.max(0, Math.round((from - anchorSec) / stepSec));
+        end   = Math.min(cursor, Math.round((to - anchorSec) / stepSec) + 1);
+      } else {
+        const count = Math.min(countBack || 500, 500);
+        end   = cursor;
+        start = Math.max(0, end - count);
+      }
+
+      if(start >= end) { onResult([], {noData: start <= 0}); return; }
+      const slice = bars.slice(start, end);
+      if(!slice.length) { onResult([], {noData: start <= 0}); return; }
 
       const result = slice.map((b, i) => ({
         time:   anchorSec + (start + i) * stepSec,
@@ -832,7 +838,7 @@ function createDatafeed() {
       tvNextBarIdx = cursor;
       onResult(result, {noData: start <= 0});
     },
-    subscribeBars: (_, __, onRealtimeCb) => { tvRealtimeCb = onRealtimeCb; },
+        subscribeBars: (_, __, onRealtimeCb) => { tvRealtimeCb = onRealtimeCb; },
     unsubscribeBars: () => { tvRealtimeCb = null; },
   };
 }
@@ -899,8 +905,7 @@ function initTV() {
         // Could show hover price — for now just track
       }
     });
-    // Add click handler for SL/TP placement via crosshair move + click
-    // onChartClick is not available — use the chart's click event via subscribeClick
+    // Add click handler for SL/TP placement
     try {
       state.tvWidget.chart().subscribeClick(({ price }) => {
         if(state.phase !== 'analyse' && state.phase !== 'lockin') return;
@@ -908,7 +913,6 @@ function initTV() {
         if(price) handleChartClick(price);
       });
     } catch(e) {
-      // Fallback: show price in panel only, use buttons for SL/TP
       console.log('Chart click not available, use panel buttons');
     }
   });
