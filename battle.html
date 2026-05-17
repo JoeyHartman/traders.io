@@ -711,26 +711,13 @@ async function fetchQuarter(key) {
 }
 
 async function loadScenario() {
-  // Pick a random starting quarter with room for 4 consecutive quarters
-  const startIdx = Math.floor(Math.random() * (ALL_QUARTERS.length - 4));
-  const keys = ALL_QUARTERS.slice(startIdx, startIdx + 4);
+  // Pick a random quarter — avoid first and last 2 quarters for context
+  const idx = 2 + Math.floor(Math.random() * (ALL_QUARTERS.length - 4));
+  const key = ALL_QUARTERS[idx];
 
-  // Fetch all 4 quarters in parallel
-  const results = await Promise.all(keys.map(k => fetchQuarter(k)));
-
-  // Merge all timeframes across 4 quarters
-  const merged = { m1:[], m5:[], m15:[], h1:[], h4:[], d1:[], w1:[] };
-  for(const data of results) {
-    if(!data) continue;
-    for(const tf of Object.keys(merged)) {
-      if(data[tf]) merged[tf] = merged[tf].concat(data[tf]);
-    }
-  }
-
-  // Use simulated data as fallback if fetch failed
-  const hasData = merged.m1.length > 0;
-  state.scenarioData = hasData ? merged : generateSimData();
-  state.scenarioKey  = keys[1]; // label by middle quarter
+  const data = await fetchQuarter(key);
+  state.scenarioData = data || generateSimData();
+  state.scenarioKey  = key;
   return true;
 }
 
@@ -770,10 +757,11 @@ function getDataForTF(tf) {
 
 function pickCursor(tf) {
   const bars = getDataForTF(tf);
-  // Use 25-75% of data as valid cursor range
-  // This ensures plenty of history before AND replay candles after
-  const min = Math.floor(bars.length * 0.25);
-  const max = Math.floor(bars.length * 0.75) - CFG.MAX_BARS;
+  // Always place cursor near end of quarter so we have max history
+  // Reserve only enough bars for replay window
+  const reserve = Math.min(CFG.MAX_BARS + 10, Math.floor(bars.length * 0.1));
+  const min = Math.floor(bars.length * 0.5); // at least 50% history
+  const max = bars.length - reserve;
   if(max <= min) return min;
   return min + Math.floor(Math.random() * (max - min));
 }
@@ -810,21 +798,22 @@ function createDatafeed() {
       if(!bars.length) { onResult([], {noData:true}); return; }
 
       const cursor = tfCursor(resolution);
+      if(cursor <= 0) { onResult([], {noData:true}); return; }
 
-      // Request as many bars as available up to cursor
-      // countBack may be small on first call — always serve at least all history up to cursor
-      const requested = Math.max(periodParams.countBack || 500, 500);
-      const start     = Math.max(0, cursor - requested);
-      const slice     = bars.slice(start, cursor);
+      // Serve all available bars up to cursor
+      // TradingView will call getBars multiple times scrolling back — serve all at once
+      const start = 0;
+      const slice = bars.slice(start, cursor);
 
       if(!slice.length) { onResult([], {noData:true}); return; }
 
-      // Consistent fake timestamps — same step per TF, same anchor across all TFs
+      // Consistent fake timestamps across all timeframes
+      // Use bar index * stepSec so each TF has correct relative spacing
       const stepSec   = (TF_MINS[resolution] || 15) * 60;
       const anchorSec = 1000000000;
 
       const result = slice.map((b, i) => ({
-        time:   anchorSec + (start + i) * stepSec,
+        time:   anchorSec + i * stepSec,
         open:   b.o, high: b.h, low: b.l, close: b.c, volume: 0,
       }));
 
