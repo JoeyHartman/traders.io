@@ -810,25 +810,17 @@ function createDatafeed() {
       if(!bars.length) { onResult([], {noData:true}); return; }
 
       const cursor    = tfCursor(resolution);
-      if(cursor <= 0) { onResult([], {noData:true}); return; }
-
       const stepSec   = (TF_MINS[resolution] || 15) * 60;
       const anchorSec = 1000000000;
-      const { from, to, countBack } = periodParams;
 
-      let start, end;
-      if(from !== undefined && to !== undefined) {
-        start = Math.max(0, Math.round((from - anchorSec) / stepSec));
-        end   = Math.min(cursor, Math.round((to - anchorSec) / stepSec) + 1);
-      } else {
-        const count = Math.min(countBack || 500, 500);
-        end   = cursor;
-        start = Math.max(0, end - count);
-      }
-
-      if(start >= end) { onResult([], {noData: start <= 0}); return; }
+      // Max 300 bars per call — TV handles pagination automatically
+      const MAX = 300;
+      const cb  = periodParams.countBack || MAX;
+      const end = cursor;
+      const start = Math.max(0, end - Math.min(cb, MAX));
       const slice = bars.slice(start, end);
-      if(!slice.length) { onResult([], {noData: start <= 0}); return; }
+
+      if(!slice.length) { onResult([], {noData: true}); return; }
 
       const result = slice.map((b, i) => ({
         time:   anchorSec + (start + i) * stepSec,
@@ -836,9 +828,10 @@ function createDatafeed() {
       }));
 
       tvNextBarIdx = cursor;
-      onResult(result, {noData: start <= 0});
+      // noData: true when we've reached the beginning — stops TV from paginating further
+      onResult(result, {noData: start === 0});
     },
-        subscribeBars: (_, __, onRealtimeCb) => { tvRealtimeCb = onRealtimeCb; },
+    subscribeBars: (_, __, onRealtimeCb) => { tvRealtimeCb = onRealtimeCb; },
     unsubscribeBars: () => { tvRealtimeCb = null; },
   };
 }
@@ -913,7 +906,7 @@ function initTV() {
         if(price) handleChartClick(price);
       });
     } catch(e) {
-      console.log('Chart click not available, use panel buttons');
+      console.log('subscribeClick not available');
     }
   });
 }
