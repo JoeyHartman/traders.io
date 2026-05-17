@@ -798,7 +798,7 @@ function createDatafeed() {
       const dec = CFG.DEC[sym] || 5;
       setTimeout(() => onResolve({
         name: sym, description: state.pair, type: 'forex',
-        session: '0000-2400:1234567', timezone: 'Etc/UTC',
+        session: '24x7', timezone: 'Etc/UTC',
         exchange: 'FX', minmov: 1, pricescale: 10**dec,
         has_intraday: true, has_daily: true, has_weekly_and_monthly: true,
         supported_resolutions: ['1','5','15','60','240','D','W'],
