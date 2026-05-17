@@ -711,13 +711,26 @@ async function fetchQuarter(key) {
 }
 
 async function loadScenario() {
-  // Pick a random quarter — avoid first and last 2 quarters for context
-  const idx = 2 + Math.floor(Math.random() * (ALL_QUARTERS.length - 4));
-  const key = ALL_QUARTERS[idx];
+  // Pick a random starting quarter with room for 4 consecutive quarters
+  const startIdx = Math.floor(Math.random() * (ALL_QUARTERS.length - 4));
+  const keys = ALL_QUARTERS.slice(startIdx, startIdx + 4);
 
-  const data = await fetchQuarter(key);
-  state.scenarioData = data || generateSimData();
-  state.scenarioKey  = key;
+  // Fetch all 4 quarters in parallel
+  const results = await Promise.all(keys.map(k => fetchQuarter(k)));
+
+  // Merge all timeframes across 4 quarters
+  const merged = { m1:[], m5:[], m15:[], h1:[], h4:[], d1:[], w1:[] };
+  for(const data of results) {
+    if(!data) continue;
+    for(const tf of Object.keys(merged)) {
+      if(data[tf]) merged[tf] = merged[tf].concat(data[tf]);
+    }
+  }
+
+  // Use simulated data as fallback if fetch failed
+  const hasData = merged.m1.length > 0;
+  state.scenarioData = hasData ? merged : generateSimData();
+  state.scenarioKey  = keys[1]; // label by middle quarter
   return true;
 }
 
@@ -757,11 +770,10 @@ function getDataForTF(tf) {
 
 function pickCursor(tf) {
   const bars = getDataForTF(tf);
-  // Always place cursor near end of quarter so we have max history
-  // Reserve only enough bars for replay window
-  const reserve = Math.min(CFG.MAX_BARS + 10, Math.floor(bars.length * 0.1));
-  const min = Math.floor(bars.length * 0.5); // at least 50% history
-  const max = bars.length - reserve;
+  // Use 25-75% of data as valid cursor range
+  // This ensures plenty of history before AND replay candles after
+  const min = Math.floor(bars.length * 0.25);
+  const max = Math.floor(bars.length * 0.75) - CFG.MAX_BARS;
   if(max <= min) return min;
   return min + Math.floor(Math.random() * (max - min));
 }
@@ -800,25 +812,25 @@ function createDatafeed() {
       const cursor = tfCursor(resolution);
       if(cursor <= 0) { onResult([], {noData:true}); return; }
 
-      // Serve all available bars up to cursor
-      // TradingView will call getBars multiple times scrolling back — serve all at once
-      const start = 0;
-      const slice = bars.slice(start, cursor);
+      // Limit to 1000 bars per call — TV paginates automatically for more
+      const MAX_PER_CALL = 1000;
+      const count  = Math.min(periodParams.countBack || MAX_PER_CALL, MAX_PER_CALL);
+      const end    = cursor;
+      const start  = Math.max(0, end - count);
+      const slice  = bars.slice(start, end);
 
-      if(!slice.length) { onResult([], {noData:true}); return; }
+      if(!slice.length) { onResult([], {noData: start <= 0}); return; }
 
-      // Consistent fake timestamps across all timeframes
-      // Use bar index * stepSec so each TF has correct relative spacing
       const stepSec   = (TF_MINS[resolution] || 15) * 60;
       const anchorSec = 1000000000;
 
       const result = slice.map((b, i) => ({
-        time:   anchorSec + i * stepSec,
+        time:   anchorSec + (start + i) * stepSec,
         open:   b.o, high: b.h, low: b.l, close: b.c, volume: 0,
       }));
 
       tvNextBarIdx = cursor;
-      onResult(result, {noData: false});
+      onResult(result, {noData: start <= 0});
     },
     subscribeBars: (_, __, onRealtimeCb) => { tvRealtimeCb = onRealtimeCb; },
     unsubscribeBars: () => { tvRealtimeCb = null; },
@@ -887,12 +899,18 @@ function initTV() {
         // Could show hover price — for now just track
       }
     });
-    // Add click handler for SL/TP placement
-    state.tvWidget.chart().onChartClick(({ price }) => {
-      if(state.phase !== 'analyse' && state.phase !== 'lockin') return;
-      if(state.locked) return;
-      handleChartClick(price);
-    });
+    // Add click handler for SL/TP placement via crosshair move + click
+    // onChartClick is not available — use the chart's click event via subscribeClick
+    try {
+      state.tvWidget.chart().subscribeClick(({ price }) => {
+        if(state.phase !== 'analyse' && state.phase !== 'lockin') return;
+        if(state.locked) return;
+        if(price) handleChartClick(price);
+      });
+    } catch(e) {
+      // Fallback: show price in panel only, use buttons for SL/TP
+      console.log('Chart click not available, use panel buttons');
+    }
   });
 }
 
