@@ -823,7 +823,7 @@ function createDatafeed() {
       if(!slice.length) { onResult([], {noData: true}); return; }
 
       const result = slice.map((b, i) => ({
-        time:   anchorSec + (start + i) * stepSec,
+        time:   anchorSec + (start + i + 1) * stepSec,
         open:   b.o, high: b.h, low: b.l, close: b.c, volume: 0,
       }));
 
