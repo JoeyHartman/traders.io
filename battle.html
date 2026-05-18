@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-eval' 'unsafe-inline' https: data: blob: filesystem:">
 <title>Traders.io — Battle Arena</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,600;0,700;0,800;0,900;1,700&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
 <script src="charting_library/charting_library.standalone.js"></script>
@@ -810,19 +811,19 @@ function createDatafeed() {
       if(!bars.length) { onResult([], {noData:true}); return; }
 
       const cursor = tfCursor(resolution);
-      if(cursor <= 0) { onResult([], {noData:true}); return; }
 
-      // Serve countBack bars up to cursor, max 500
-      const count = Math.min(periodParams.countBack || 300, 500);
-      const start = Math.max(0, cursor - count);
-      const slice = bars.slice(start, cursor);
+      // Request as many bars as available up to cursor
+      // countBack may be small on first call — always serve at least all history up to cursor
+      const requested = Math.max(periodParams.countBack || 500, 500);
+      const start     = Math.max(0, cursor - requested);
+      const slice     = bars.slice(start, cursor);
 
-      if(!slice.length) { onResult([], {noData: true}); return; }
+      if(!slice.length) { onResult([], {noData:true}); return; }
 
-      // MILLISECOND timestamps — required by TradingView API docs
-      // Anchor: 2020-01-01 00:00:00 UTC = 1577836800000 ms
+      // Consistent fake timestamps — same step per TF, same anchor across all TFs
+      // MILLISECONDS as required by TV API docs
       const stepMs   = (TF_MINS[resolution] || 15) * 60 * 1000;
-      const anchorMs = 1577836800000;
+      const anchorMs = 1577836800000; // 2020-01-01 UTC
 
       const result = slice.map((b, i) => ({
         time:   anchorMs + (start + i) * stepMs,
@@ -830,7 +831,7 @@ function createDatafeed() {
       }));
 
       tvNextBarIdx = cursor;
-      onResult(result, {noData: start === 0});
+      onResult(result, {noData: false});
     },
     subscribeBars: (_, __, onRealtimeCb) => { tvRealtimeCb = onRealtimeCb; },
     unsubscribeBars: () => { tvRealtimeCb = null; },
@@ -1253,7 +1254,6 @@ function startReplay() {
 
     // Append candle to TV chart
     if(tvRealtimeCb) {
-      // MILLISECONDS, same anchor as getBars
       const stepMs   = (TF_MINS[state.entryTF] || 15) * 60 * 1000;
       const anchorMs = 1577836800000;
       tvRealtimeCb({
