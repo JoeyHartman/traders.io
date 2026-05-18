@@ -796,15 +796,32 @@ function createDatafeed() {
     }), 0),
     searchSymbols: (_, __, ___, onResult) => onResult([]),
     resolveSymbol: (symbolName, onResolve) => {
-      const sym = symbolName.toUpperCase().replace('/','');
+      // Strip exchange prefix (e.g. "FX:EURUSD" -> "EURUSD") to prevent re-resolve loop
+      const sym = symbolName.toUpperCase().replace(/^[A-Z]+:/, '').replace('/','');
       const dec = CFG.DEC[sym] || 5;
       setTimeout(() => onResolve({
-        name: sym, description: state.pair, type: 'forex',
-        session: '24x7', timezone: 'Etc/UTC',
-        exchange: 'FX', minmov: 1, pricescale: 10**dec,
-        has_intraday: true, has_daily: true, has_weekly_and_monthly: true,
-        supported_resolutions: ['1','5','15','60','240','D','W'],
-        volume_precision: 0, data_status: 'streaming',
+        // ticker MUST match name exactly -- prevents TV from re-resolving with exchange prefix
+        ticker:      sym,
+        name:        sym,
+        full_name:   sym,
+        description: state.pair,
+        type:        'forex',
+        session:     '24x7',
+        timezone:    'Etc/UTC',
+        exchange:    '',
+        listed_exchange: '',
+        minmov:      1,
+        pricescale:  10 ** dec,
+        minmove2:    0,
+        has_intraday:           true,
+        intraday_multipliers:   ['1','5','15','60','240'],
+        has_daily:              true,
+        has_weekly_and_monthly: true,
+        supported_resolutions:  ['1','5','15','60','240','D','W'],
+        has_no_volume:          true,
+        has_empty_bars:         false,
+        volume_precision:       0,
+        data_status:            'endofday',
       }), 0);
     },
     getBars: (symbolInfo, resolution, periodParams, onResult) => {
