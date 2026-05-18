@@ -798,7 +798,7 @@ function createDatafeed() {
       const dec = CFG.DEC[sym] || 5;
       setTimeout(() => onResolve({
         name: sym, description: state.pair, type: 'forex',
-        session: '24x7', timezone: 'Etc/UTC',
+        session: '0000-2400:1234567', timezone: 'Etc/UTC',
         exchange: 'FX', minmov: 1, pricescale: 10**dec,
         has_intraday: true, has_daily: true, has_weekly_and_monthly: true,
         supported_resolutions: ['1','5','15','60','240','D','W'],
@@ -810,26 +810,27 @@ function createDatafeed() {
       if(!bars.length) { onResult([], {noData:true}); return; }
 
       const cursor = tfCursor(resolution);
+      if(cursor <= 0) { onResult([], {noData:true}); return; }
 
-      // Request as many bars as available up to cursor
-      // countBack may be small on first call — always serve at least all history up to cursor
-      const requested = Math.max(periodParams.countBack || 500, 500);
-      const start     = Math.max(0, cursor - requested);
-      const slice     = bars.slice(start, cursor);
+      // Serve countBack bars up to cursor, max 500
+      const count = Math.min(periodParams.countBack || 300, 500);
+      const start = Math.max(0, cursor - count);
+      const slice = bars.slice(start, cursor);
 
-      if(!slice.length) { onResult([], {noData:true}); return; }
+      if(!slice.length) { onResult([], {noData: true}); return; }
 
-      // Consistent fake timestamps — same step per TF, same anchor across all TFs
-      const stepSec   = (TF_MINS[resolution] || 15) * 60;
-      const anchorSec = 1000000000;
+      // MILLISECOND timestamps — required by TradingView API docs
+      // Anchor: 2020-01-01 00:00:00 UTC = 1577836800000 ms
+      const stepMs   = (TF_MINS[resolution] || 15) * 60 * 1000;
+      const anchorMs = 1577836800000;
 
       const result = slice.map((b, i) => ({
-        time:   anchorSec + (start + i) * stepSec,
+        time:   anchorMs + (start + i) * stepMs,
         open:   b.o, high: b.h, low: b.l, close: b.c, volume: 0,
       }));
 
       tvNextBarIdx = cursor;
-      onResult(result, {noData: false});
+      onResult(result, {noData: start === 0});
     },
     subscribeBars: (_, __, onRealtimeCb) => { tvRealtimeCb = onRealtimeCb; },
     unsubscribeBars: () => { tvRealtimeCb = null; },
@@ -899,11 +900,13 @@ function initTV() {
       }
     });
     // Add click handler for SL/TP placement
-    state.tvWidget.chart().onChartClick(({ price }) => {
-      if(state.phase !== 'analyse' && state.phase !== 'lockin') return;
-      if(state.locked) return;
-      handleChartClick(price);
-    });
+    try {
+      state.tvWidget.chart().subscribeClick(({ price }) => {
+        if(state.phase !== 'analyse' && state.phase !== 'lockin') return;
+        if(state.locked) return;
+        if(price) handleChartClick(price);
+      });
+    } catch(e) { console.log('subscribeClick not available'); }
   });
 }
 
@@ -1250,10 +1253,11 @@ function startReplay() {
 
     // Append candle to TV chart
     if(tvRealtimeCb) {
-      const stepMs = (TF_MINS[state.entryTF]||15) * 60000;
-      const baseTs = 946684800000;
+      // MILLISECONDS, same anchor as getBars
+      const stepMs   = (TF_MINS[state.entryTF] || 15) * 60 * 1000;
+      const anchorMs = 1577836800000;
       tvRealtimeCb({
-        time:   (baseTs + (state.cursorIndex + i) * stepMs) / 1000,
+        time:   anchorMs + (state.cursorIndex + i) * stepMs,
         open:   c.o, high: c.h, low: c.l, close: c.c, volume: 0,
       });
     }
