@@ -829,29 +829,41 @@ function createDatafeed() {
       if(!bars.length) { onResult([], {noData:true}); return; }
 
       const cursor = tfCursor(resolution);
-
-      // Request as many bars as available up to cursor
-      // countBack may be small on first call — always serve at least all history up to cursor
       const requested = Math.max(periodParams.countBack || 2000, 2000);
       const start     = Math.max(0, cursor - requested);
       const slice     = bars.slice(start, cursor);
 
       if(!slice.length) { onResult([], {noData:true}); return; }
 
-      // Consistent fake timestamps — same step per TF, same anchor across all TFs
-      // MILLISECONDS as required by TV API docs
-      const stepMs   = (TF_MINS[resolution] || 15) * 60 * 1000;
-      const anchorMs = 1577836800000; // 2020-01-01 UTC
+      // Monday 2019-12-30 00:00 UTC
+      const MONDAY_ANCHOR = 1577664000000;
+      const DAY_MS = 86400000;
+
+      // Daily bars MUST land on Mon-Fri only — otherwise _parseFirstDayOfWeek recurses infinitely
+      // Weekly bars land on Mondays. Intraday is linear (24x7 session, no weekend gaps needed).
+      function barIndexToMs(idx) {
+        if (resolution === 'D') {
+          const week = Math.floor(idx / 5);
+          const day  = idx % 5; // 0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri
+          return MONDAY_ANCHOR + (week * 7 + day) * DAY_MS;
+        }
+        if (resolution === 'W') {
+          return MONDAY_ANCHOR + idx * 7 * DAY_MS;
+        }
+        // Intraday: linear steps from Monday anchor
+        const stepMs = (TF_MINS[resolution] || 15) * 60 * 1000;
+        return MONDAY_ANCHOR + idx * stepMs;
+      }
 
       const result = slice.map((b, i) => ({
-        time:   anchorMs + (start + i) * stepMs,
-        open:   b.o, high: b.h, low: b.l, close: b.c, volume: 0,
+        time:  barIndexToMs(start + i),
+        open:  b.o, high: b.h, low: b.l, close: b.c, volume: 0,
       }));
 
       tvNextBarIdx = cursor;
       onResult(result, {noData: false});
     },
-    subscribeBars: (_, __, onRealtimeCb) => { tvRealtimeCb = onRealtimeCb; },
+        subscribeBars: (_, __, onRealtimeCb) => { tvRealtimeCb = onRealtimeCb; },
     unsubscribeBars: () => { tvRealtimeCb = null; },
   };
 }
@@ -1270,14 +1282,21 @@ function startReplay() {
       }
     }
 
-    // Append candle to TV chart
+    // Append candle to TV chart — use same weekday-aware timestamp logic as getBars
     if(tvRealtimeCb) {
-      const stepMs   = (TF_MINS[state.entryTF] || 15) * 60 * 1000;
-      const anchorMs = 1577836800000;
-      tvRealtimeCb({
-        time:   anchorMs + (state.cursorIndex + i) * stepMs,
-        open:   c.o, high: c.h, low: c.l, close: c.c, volume: 0,
-      });
+      const MONDAY_ANCHOR = 1577664000000;
+      const DAY_MS = 86400000;
+      const tf = state.entryTF;
+      const idx = state.cursorIndex + i;
+      let ts;
+      if (tf === 'D') {
+        ts = MONDAY_ANCHOR + (Math.floor(idx / 5) * 7 + idx % 5) * DAY_MS;
+      } else if (tf === 'W') {
+        ts = MONDAY_ANCHOR + idx * 7 * DAY_MS;
+      } else {
+        ts = MONDAY_ANCHOR + idx * (TF_MINS[tf] || 15) * 60 * 1000;
+      }
+      tvRealtimeCb({ time: ts, open: c.o, high: c.h, low: c.l, close: c.c, volume: 0 });
     }
 
     // Update PnL display
