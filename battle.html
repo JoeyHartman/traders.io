@@ -837,7 +837,7 @@ function createDatafeed() {
         type:        'forex',
         // CRITICAL: '24x7' + weekday-only Daily bars = _alignBarsTime infinite loop
         // Forex session Mon-Fri 00:00-00:00 UTC — matches our weekday-only Daily timestamps
-        session:     '0000-0000:23456',
+        session:     '0000-2400:23456',
         session_holidays: '',
         timezone:    'Etc/UTC',
         exchange:    'FX',
