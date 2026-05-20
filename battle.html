@@ -711,16 +711,40 @@ async function fetchQuarter(key) {
   }
 }
 
+// Parse quarter key -> real UTC start timestamp
+function quarterStartMs(key) {
+  const m = key.match(/_(\d{4})Q(\d)/);
+  if(!m) return Date.UTC(2010, 0, 1);
+  const year = parseInt(m[1]);
+  const q    = parseInt(m[2]);
+  return Date.UTC(year, (q - 1) * 3, 1); // Q1=Jan, Q2=Apr, Q3=Jul, Q4=Oct
+}
+
+// Build array of trading-day start timestamps (Mon-Fri only) from a given UTC start
+// count: how many trading days to pre-compute
+function buildTradingDayStarts(startMs, count) {
+  const DAY = 86400000;
+  const days = [];
+  let cursor = startMs;
+  let dow = new Date(cursor).getUTCDay();
+  // If start is weekend, move to next Monday
+  while(dow === 0 || dow === 6) { cursor += DAY; dow = new Date(cursor).getUTCDay(); }
+  while(days.length < count) {
+    days.push(cursor);
+    cursor += DAY;
+    dow = new Date(cursor).getUTCDay();
+    while(dow === 0 || dow === 6) { cursor += DAY; dow = new Date(cursor).getUTCDay(); }
+  }
+  return days;
+}
+
 async function loadScenario() {
   // Pick a random starting quarter with room for 6 consecutive quarters
-  // 6 quarters = 1.5 year of data — enough history on Daily/Weekly TFs
   const startIdx = Math.floor(Math.random() * (ALL_QUARTERS.length - 6));
   const keys = ALL_QUARTERS.slice(startIdx, startIdx + 6);
 
-  // Fetch all 4 quarters in parallel
   const results = await Promise.all(keys.map(k => fetchQuarter(k)));
 
-  // Merge all timeframes across 4 quarters
   const merged = { m1:[], m5:[], m15:[], h1:[], h4:[], d1:[], w1:[] };
   for(const data of results) {
     if(!data) continue;
@@ -729,10 +753,16 @@ async function loadScenario() {
     }
   }
 
-  // Use simulated data as fallback if fetch failed
   const hasData = merged.m1.length > 0;
   state.scenarioData = hasData ? merged : generateSimData();
-  state.scenarioKey  = keys[2]; // label by middle quarter
+  state.scenarioKey  = keys[2];
+
+  // Build real trading-day timestamp array for the scenario start
+  // We need enough days to cover d1 bars (6 quarters ~ 6*65 = ~390 trading days)
+  // Add extra buffer for intraday (each trading day = up to 1440 m1 bars)
+  const scenarioStartMs = quarterStartMs(keys[0]);
+  state.tradingDays = buildTradingDayStarts(scenarioStartMs, 500);
+
   return true;
 }
 
@@ -830,39 +860,35 @@ function createDatafeed() {
       const bars = getDataForTF(resolution);
       if(!bars.length) { onResult([], {noData:true}); return; }
 
-      const cursor = tfCursor(resolution);
+      const cursor    = tfCursor(resolution);
       const requested = Math.max(periodParams.countBack || 2000, 2000);
       const start     = Math.max(0, cursor - requested);
       const slice     = bars.slice(start, cursor);
 
       if(!slice.length) { onResult([], {noData:true}); return; }
 
-      // Monday 2019-12-30 00:00 UTC
-      const MONDAY_ANCHOR = 1577664000000;
       const DAY_MS = 86400000;
+      const td     = state.tradingDays; // real Mon-Fri UTC timestamps built in loadScenario
 
-      // Daily bars MUST land on Mon-Fri only — otherwise _parseFirstDayOfWeek recurses infinitely
-      // Weekly bars land on Mondays. Intraday is linear (24x7 session, no weekend gaps needed).
-      // All TFs: bars only on Mon-Fri to match session '0000-0000:23456'
-      // Intraday: bars fill Mon 00:00 -> Fri 24:00, then skip to next Mon 00:00
-      function barIndexToMs(idx) {
-        const stepMs = (TF_MINS[resolution] || 15) * 60 * 1000;
+      // Convert bar index to real UTC timestamp using actual calendar dates.
+      // This prevents _parseSessionsImpl/_alignBarsTime infinite loops because
+      // timestamps genuinely match the session string '0000-0000:23456'.
+      function barIndexToMs(barIdx) {
+        if(!td || !td.length) return Date.UTC(2015,0,4) + barIdx * DAY_MS;
         if (resolution === 'D') {
-          const week = Math.floor(idx / 5);
-          const day  = idx % 5; // 0=Mon .. 4=Fri
-          return MONDAY_ANCHOR + (week * 7 + day) * DAY_MS;
+          return td[Math.min(barIdx, td.length - 1)];
         }
         if (resolution === 'W') {
-          return MONDAY_ANCHOR + idx * 7 * DAY_MS;
+          // Weekly bar i = Monday of every 5th trading day group
+          return td[Math.min(barIdx * 5, td.length - 1)];
         }
-        // Intraday: how many bars fit in a Mon-Fri week?
-        const barsPerDay  = DAY_MS / stepMs;           // e.g. 96 for 15m
-        const barsPerWeek = barsPerDay * 5;             // 5 trading days
-        const week        = Math.floor(idx / barsPerWeek);
-        const withinWeek  = idx % barsPerWeek;
-        const dayInWeek   = Math.floor(withinWeek / barsPerDay); // 0=Mon..4=Fri
-        const barInDay    = withinWeek % barsPerDay;
-        return MONDAY_ANCHOR + (week * 7 + dayInWeek) * DAY_MS + barInDay * stepMs;
+        // Intraday: each trading day has barsPerDay slots; weekends are skipped
+        const stepMs     = (TF_MINS[resolution] || 15) * 60 * 1000;
+        const barsPerDay = DAY_MS / stepMs;
+        const dayIdx     = Math.floor(barIdx / barsPerDay);
+        const barInDay   = barIdx % barsPerDay;
+        const dayStart   = td[Math.min(dayIdx, td.length - 1)];
+        return dayStart + barInDay * stepMs;
       }
 
       const result = slice.map((b, i) => ({
@@ -873,7 +899,7 @@ function createDatafeed() {
       tvNextBarIdx = cursor;
       onResult(result, {noData: false});
     },
-        subscribeBars: (_, __, onRealtimeCb) => { tvRealtimeCb = onRealtimeCb; },
+            subscribeBars: (_, __, onRealtimeCb) => { tvRealtimeCb = onRealtimeCb; },
     unsubscribeBars: () => { tvRealtimeCb = null; },
   };
 }
@@ -1292,26 +1318,25 @@ function startReplay() {
       }
     }
 
-    // Append candle to TV chart — identical weekday-aware logic as getBars/barIndexToMs
+    // Append candle to TV chart — same real-calendar logic as getBars
     if(tvRealtimeCb) {
-      const MONDAY_ANCHOR = 1577664000000;
       const DAY_MS = 86400000;
-      const tf  = state.entryTF;
-      const idx = state.cursorIndex + i;
-      const stepMs = (TF_MINS[tf] || 15) * 60 * 1000;
+      const td     = state.tradingDays;
+      const tf     = state.entryTF;
+      const barIdx = state.cursorIndex + i;
       let ts;
-      if (tf === 'D') {
-        ts = MONDAY_ANCHOR + (Math.floor(idx / 5) * 7 + idx % 5) * DAY_MS;
+      if(!td || !td.length) {
+        ts = Date.UTC(2015,0,4) + barIdx * DAY_MS;
+      } else if (tf === 'D') {
+        ts = td[Math.min(barIdx, td.length - 1)];
       } else if (tf === 'W') {
-        ts = MONDAY_ANCHOR + idx * 7 * DAY_MS;
+        ts = td[Math.min(barIdx * 5, td.length - 1)];
       } else {
-        const barsPerDay  = DAY_MS / stepMs;
-        const barsPerWeek = barsPerDay * 5;
-        const week        = Math.floor(idx / barsPerWeek);
-        const withinWeek  = idx % barsPerWeek;
-        const dayInWeek   = Math.floor(withinWeek / barsPerDay);
-        const barInDay    = withinWeek % barsPerDay;
-        ts = MONDAY_ANCHOR + (week * 7 + dayInWeek) * DAY_MS + barInDay * stepMs;
+        const stepMs     = (TF_MINS[tf] || 15) * 60 * 1000;
+        const barsPerDay = DAY_MS / stepMs;
+        const dayIdx     = Math.floor(barIdx / barsPerDay);
+        const barInDay   = barIdx % barsPerDay;
+        ts = td[Math.min(dayIdx, td.length - 1)] + barInDay * stepMs;
       }
       tvRealtimeCb({ time: ts, open: c.o, high: c.h, low: c.l, close: c.c, volume: 0 });
     }
