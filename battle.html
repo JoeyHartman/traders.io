@@ -800,16 +800,18 @@ function createDatafeed() {
       const sym = symbolName.toUpperCase().replace(/^[A-Z]+:/, '').replace('/','');
       const dec = CFG.DEC[sym] || 5;
       setTimeout(() => onResolve({
-        // ticker MUST match name exactly -- prevents TV from re-resolving with exchange prefix
         ticker:      sym,
         name:        sym,
         full_name:   sym,
         description: state.pair,
         type:        'forex',
-        session:     '24x7',
+        // CRITICAL: '24x7' + weekday-only Daily bars = _alignBarsTime infinite loop
+        // Forex session Mon-Fri 00:00-00:00 UTC — matches our weekday-only Daily timestamps
+        session:     '0000-0000:23456',
+        session_holidays: '',
         timezone:    'Etc/UTC',
-        exchange:    '',
-        listed_exchange: '',
+        exchange:    'FX',
+        listed_exchange: 'FX',
         minmov:      1,
         pricescale:  10 ** dec,
         minmove2:    0,
@@ -818,7 +820,7 @@ function createDatafeed() {
         has_daily:              true,
         has_weekly_and_monthly: true,
         supported_resolutions:  ['1','5','15','60','240','D','W'],
-        has_no_volume:          true,
+        visible_plots_set:      'ohlc',
         has_empty_bars:         false,
         volume_precision:       0,
         data_status:            'endofday',
@@ -841,18 +843,26 @@ function createDatafeed() {
 
       // Daily bars MUST land on Mon-Fri only — otherwise _parseFirstDayOfWeek recurses infinitely
       // Weekly bars land on Mondays. Intraday is linear (24x7 session, no weekend gaps needed).
+      // All TFs: bars only on Mon-Fri to match session '0000-0000:23456'
+      // Intraday: bars fill Mon 00:00 -> Fri 24:00, then skip to next Mon 00:00
       function barIndexToMs(idx) {
+        const stepMs = (TF_MINS[resolution] || 15) * 60 * 1000;
         if (resolution === 'D') {
           const week = Math.floor(idx / 5);
-          const day  = idx % 5; // 0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri
+          const day  = idx % 5; // 0=Mon .. 4=Fri
           return MONDAY_ANCHOR + (week * 7 + day) * DAY_MS;
         }
         if (resolution === 'W') {
           return MONDAY_ANCHOR + idx * 7 * DAY_MS;
         }
-        // Intraday: linear steps from Monday anchor
-        const stepMs = (TF_MINS[resolution] || 15) * 60 * 1000;
-        return MONDAY_ANCHOR + idx * stepMs;
+        // Intraday: how many bars fit in a Mon-Fri week?
+        const barsPerDay  = DAY_MS / stepMs;           // e.g. 96 for 15m
+        const barsPerWeek = barsPerDay * 5;             // 5 trading days
+        const week        = Math.floor(idx / barsPerWeek);
+        const withinWeek  = idx % barsPerWeek;
+        const dayInWeek   = Math.floor(withinWeek / barsPerDay); // 0=Mon..4=Fri
+        const barInDay    = withinWeek % barsPerDay;
+        return MONDAY_ANCHOR + (week * 7 + dayInWeek) * DAY_MS + barInDay * stepMs;
       }
 
       const result = slice.map((b, i) => ({
@@ -1282,19 +1292,26 @@ function startReplay() {
       }
     }
 
-    // Append candle to TV chart — use same weekday-aware timestamp logic as getBars
+    // Append candle to TV chart — identical weekday-aware logic as getBars/barIndexToMs
     if(tvRealtimeCb) {
       const MONDAY_ANCHOR = 1577664000000;
       const DAY_MS = 86400000;
-      const tf = state.entryTF;
+      const tf  = state.entryTF;
       const idx = state.cursorIndex + i;
+      const stepMs = (TF_MINS[tf] || 15) * 60 * 1000;
       let ts;
       if (tf === 'D') {
         ts = MONDAY_ANCHOR + (Math.floor(idx / 5) * 7 + idx % 5) * DAY_MS;
       } else if (tf === 'W') {
         ts = MONDAY_ANCHOR + idx * 7 * DAY_MS;
       } else {
-        ts = MONDAY_ANCHOR + idx * (TF_MINS[tf] || 15) * 60 * 1000;
+        const barsPerDay  = DAY_MS / stepMs;
+        const barsPerWeek = barsPerDay * 5;
+        const week        = Math.floor(idx / barsPerWeek);
+        const withinWeek  = idx % barsPerWeek;
+        const dayInWeek   = Math.floor(withinWeek / barsPerDay);
+        const barInDay    = withinWeek % barsPerDay;
+        ts = MONDAY_ANCHOR + (week * 7 + dayInWeek) * DAY_MS + barInDay * stepMs;
       }
       tvRealtimeCb({ time: ts, open: c.o, high: c.h, low: c.l, close: c.c, volume: 0 });
     }
