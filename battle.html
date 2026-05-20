@@ -835,9 +835,8 @@ function createDatafeed() {
         full_name:   sym,
         description: state.pair,
         type:        'forex',
-        // CRITICAL: '24x7' + weekday-only Daily bars = _alignBarsTime infinite loop
-        // Forex session Mon-Fri 00:00-00:00 UTC — matches our weekday-only Daily timestamps
-        session:     '0000-2400:23456',
+        // 24x7 + dont_align_trading_sessions = no _alignBarsTime calls = no crash
+        session:     '24x7',
         session_holidays: '',
         timezone:    'Etc/UTC',
         exchange:    'FX',
@@ -951,6 +950,7 @@ function initTV() {
       'display_market_status','timezone_menu','go_to_date',
       'show_interval_dialog_on_key_press','adaptive_logo',
       'header_saveload','left_toolbar',
+      'dont_align_trading_sessions',
     ],
     enabled_features: ['side_toolbar_in_fullscreen_mode'],
     time_frames: [],
