@@ -1053,14 +1053,8 @@ function initTV() {
         // Could show hover price — for now just track
       }
     });
-    // Add click handler for SL/TP placement
-    try {
-      state.tvWidget.chart().subscribeClick(({ price }) => {
-        if(state.phase !== 'analyse' && state.phase !== 'lockin') return;
-        if(state.locked) return;
-        if(price) handleChartClick(price);
-      });
-    } catch(e) { console.log('subscribeClick not available'); }
+    // Initialize draggable Entry/SL/TP order lines
+    initOrderLines();
   });
 }
 
@@ -1082,59 +1076,116 @@ function switchTF(tf) {
 }
 
 // ════════════════════════════════════════════════════
-// SL/TP PLACEMENT
+// SL/TP PLACEMENT — drag & drop via createOrderLine
 // ════════════════════════════════════════════════════
-let clickStep = 'entry'; // entry → sl → tp
 
-function handleChartClick(price) {
-  if(!price) return;
+// Order line objects (TradingView IOrderLineAdapter)
+let orderLines = { entry: null, sl: null, tp: null };
 
-  if(clickStep === 'entry') {
-    state.entryPrice = price;
-    document.getElementById('b-entry').textContent = fmt(state.symbol, price);
-    document.getElementById('sltp-instruction').textContent = 'Now click to place your Stop Loss (below entry for long, above for short)';
-    addOrUpdateLine('entry', price, '#ffd740', 'ENTRY');
-    clickStep = 'sl';
-    showToast('Entry set at ' + fmt(state.symbol, price) + ' — now place Stop Loss');
-  } else if(clickStep === 'sl') {
-    state.slPrice = price;
-    addOrUpdateLine('sl', price, '#ff3d5a', 'SL');
-    document.getElementById('sltp-instruction').textContent = 'Now click to place your Take Profit';
-    clickStep = 'tp';
+// Initialize the three draggable lines on the chart.
+// Called once chart is ready. Lines start at sensible default positions.
+function initOrderLines() {
+  if(!state.tvReady || !state.tvWidget) return;
+  removeOrderLines();
+
+  // Estimate a starting price from the last bar
+  const bars = getDataForTF(state.entryTF);
+  const lastBar = bars[tfCursor(state.entryTF) - 1] || { c: 1.1000 };
+  const price   = lastBar.c;
+  const pip     = CFG.PIP[state.symbol] || 0.0001;
+
+  const entryPrice = price;
+  const slPrice    = price - pip * 20;  // 20 pips below
+  const tpPrice    = price + pip * 40;  // 40 pips above (1:2 R:R)
+
+  const chart = state.tvWidget.chart();
+
+  try {
+    orderLines.entry = chart.createOrderLine()
+      .setPrice(entryPrice)
+      .setText('ENTRY')
+      .setQuantity('')
+      .setLineColor('#ffd740')
+      .setBodyBorderColor('#ffd740')
+      .setBodyBackgroundColor('#ffd740')
+      .setBodyTextColor('#06090f')
+      .setLineWidth(1)
+      .setLineStyle(0)
+      .onMove(function() {
+        state.entryPrice = this.getPrice();
+        updateSLTPStats();
+        checkLockReady();
+      });
+
+    orderLines.sl = chart.createOrderLine()
+      .setPrice(slPrice)
+      .setText('STOP LOSS')
+      .setQuantity('')
+      .setLineColor('#ff3d5a')
+      .setBodyBorderColor('#ff3d5a')
+      .setBodyBackgroundColor('#ff3d5a')
+      .setBodyTextColor('#ffffff')
+      .setLineWidth(1)
+      .setLineStyle(2)
+      .onMove(function() {
+        state.slPrice = this.getPrice();
+        updateSLTPStats();
+        checkLockReady();
+      });
+
+    orderLines.tp = chart.createOrderLine()
+      .setPrice(tpPrice)
+      .setText('TAKE PROFIT')
+      .setQuantity('')
+      .setLineColor('#00e676')
+      .setBodyBorderColor('#00e676')
+      .setBodyBackgroundColor('#00e676')
+      .setBodyTextColor('#06090f')
+      .setLineWidth(1)
+      .setLineStyle(2)
+      .onMove(function() {
+        state.tpPrice = this.getPrice();
+        updateSLTPStats();
+        checkLockReady();
+      });
+
+    // Set initial state values
+    state.entryPrice = entryPrice;
+    state.slPrice    = slPrice;
+    state.tpPrice    = tpPrice;
     updateSLTPStats();
-    showToast('SL set — now place Take Profit');
-  } else if(clickStep === 'tp') {
-    state.tpPrice = price;
-    addOrUpdateLine('tp', price, '#00e676', 'TP');
-    document.getElementById('sltp-instruction').textContent = 'Entry, SL & TP set — lock in when ready';
-    clickStep = 'done';
-    updateSLTPStats();
-    document.getElementById('lock-btn').disabled = false;
-    showToast('Setup complete — lock in when ready ⚡');
+    checkLockReady();
+
+    document.getElementById('sltp-instruction').textContent = 'Drag the lines to set your Entry, SL and TP';
+
+  } catch(e) {
+    console.warn('createOrderLine failed:', e.message);
   }
 }
 
-function addOrUpdateLine(type, price, color, label) {
-  if(!state.tvReady || !state.tvWidget) return;
-  try {
-    const chart = state.tvWidget.chart();
-    // Remove existing
-    if(state[type+'Line']) { try{ chart.removeEntity(state[type+'Line']); }catch(e){} state[type+'Line']=null; }
-    // Add new horizontal line
-    state[type+'Line'] = chart.createShape(
-      { price },
-      {
-        shape: 'horizontal_line',
-        lock: true, disableSelection: false, disableSave: true,
-        overrides: {
-          linecolor: color, linewidth: 1, linestyle: 2,
-          showLabel: true, text: label, textcolor: color,
-          horzLabelsAlign: 'right',
-        }
-      }
-    );
-  } catch(e) { console.warn('Line error:', e.message); }
+function removeOrderLines() {
+  for(const key of ['entry','sl','tp']) {
+    if(orderLines[key]) {
+      try { orderLines[key].remove(); } catch(e) {}
+      orderLines[key] = null;
+    }
+  }
 }
+
+function checkLockReady() {
+  const hasEntry = state.entryPrice != null;
+  const hasSL    = state.slPrice    != null;
+  const hasTP    = state.tpPrice    != null;
+  // Validate: SL and TP must be on opposite sides of entry
+  if(hasEntry && hasSL && hasTP) {
+    const slOk = state.slPrice !== state.entryPrice;
+    const tpOk = state.tpPrice !== state.entryPrice;
+    document.getElementById('lock-btn').disabled = !(slOk && tpOk);
+  }
+}
+
+// Keep legacy handleChartClick as no-op (subscribeClick doesn't work anyway)
+function handleChartClick(price) {}
 
 function updateSLTPStats() {
   const pip = CFG.PIP[state.symbol] || 0.0001;
@@ -1177,8 +1228,7 @@ function startBattle() {
   state.entryPrice = null; state.slPrice = null; state.tpPrice = null;
   state.locked     = false; state.phase = 'analyse';
   state.replayIdx  = 0; state.lastResult = null;
-  clickStep = 'entry';
-  state.entryLine = null; state.slLine = null; state.tpLine = null;
+  removeOrderLines();
 
   // Pick cursor for entry TF
   if(state.battleCount > 1) {
@@ -1324,6 +1374,7 @@ function lockIn() {
     showToast('Set Entry, SL and TP first!'); return;
   }
   state.locked = true;
+  removeOrderLines();
   const slD = Math.abs(state.entryPrice - state.slPrice);
   const tpD = Math.abs(state.tpPrice - state.entryPrice);
   const rr  = slD > 0 ? (tpD/slD).toFixed(1) : '?';
