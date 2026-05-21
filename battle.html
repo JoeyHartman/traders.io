@@ -1003,7 +1003,6 @@ function initTV() {
     custom_formatters: {
       timeFormatter: {
         format: (date) => {
-          // Show day-of-week + time, but never the actual date
           const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
           const dow  = days[date.getUTCDay()];
           const hh   = String(date.getUTCHours()).padStart(2,'0');
@@ -1020,7 +1019,6 @@ function initTV() {
       },
       dateFormatter: {
         format: (date) => {
-          // On daily chart: show only day-of-week, never the date
           const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
           return days[date.getUTCDay()];
         },
@@ -1028,6 +1026,19 @@ function initTV() {
           const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
           return days[date.getUTCDay()];
         },
+      },
+      tickMarkFormatter: (date, tickMarkType, locale) => {
+        // tickMarkType: Year, Month, DayOfMonth, Time, TimeWithSeconds
+        // Never show year/month/day numbers — only weekday + time
+        const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+        const dow  = days[date.getUTCDay()];
+        const hh   = String(date.getUTCHours()).padStart(2,'0');
+        const mm   = String(date.getUTCMinutes()).padStart(2,'0');
+        if(tickMarkType === 'Time' || tickMarkType === 'TimeWithSeconds') {
+          return `${hh}:${mm}`;
+        }
+        // DayOfMonth, Month, Year — show only weekday
+        return dow;
       },
     },
     disabled_features: [
@@ -1088,85 +1099,85 @@ function initOrderLines() {
   if(!state.tvReady || !state.tvWidget) return;
   removeOrderLines();
 
-  // Estimate a starting price from the last bar
-  const bars = getDataForTF(state.entryTF);
+  const bars    = getDataForTF(state.entryTF);
   const lastBar = bars[tfCursor(state.entryTF) - 1] || { c: 1.1000 };
   const price   = lastBar.c;
   const pip     = CFG.PIP[state.symbol] || 0.0001;
 
   const entryPrice = price;
-  const slPrice    = price - pip * 20;  // 20 pips below
-  const tpPrice    = price + pip * 40;  // 40 pips above (1:2 R:R)
+  const slPrice    = price - pip * 20;
+  const tpPrice    = price + pip * 40;
+
+  state.entryPrice = entryPrice;
+  state.slPrice    = slPrice;
+  state.tpPrice    = tpPrice;
 
   const chart = state.tvWidget.chart();
 
-  try {
-    orderLines.entry = chart.createOrderLine()
-      .setPrice(entryPrice)
-      .setText('ENTRY')
-      .setQuantity('')
-      .setLineColor('#ffd740')
-      .setBodyBorderColor('#ffd740')
-      .setBodyBackgroundColor('#ffd740')
-      .setBodyTextColor('#06090f')
-      .setLineWidth(1)
-      .setLineStyle(0)
-      .onMove(function() {
-        state.entryPrice = this.getPrice();
-        updateSLTPStats();
-        checkLockReady();
-      });
-
-    orderLines.sl = chart.createOrderLine()
-      .setPrice(slPrice)
-      .setText('STOP LOSS')
-      .setQuantity('')
-      .setLineColor('#ff3d5a')
-      .setBodyBorderColor('#ff3d5a')
-      .setBodyBackgroundColor('#ff3d5a')
-      .setBodyTextColor('#ffffff')
-      .setLineWidth(1)
-      .setLineStyle(2)
-      .onMove(function() {
-        state.slPrice = this.getPrice();
-        updateSLTPStats();
-        checkLockReady();
-      });
-
-    orderLines.tp = chart.createOrderLine()
-      .setPrice(tpPrice)
-      .setText('TAKE PROFIT')
-      .setQuantity('')
-      .setLineColor('#00e676')
-      .setBodyBorderColor('#00e676')
-      .setBodyBackgroundColor('#00e676')
-      .setBodyTextColor('#06090f')
-      .setLineWidth(1)
-      .setLineStyle(2)
-      .onMove(function() {
-        state.tpPrice = this.getPrice();
-        updateSLTPStats();
-        checkLockReady();
-      });
-
-    // Set initial state values
-    state.entryPrice = entryPrice;
-    state.slPrice    = slPrice;
-    state.tpPrice    = tpPrice;
-    updateSLTPStats();
-    checkLockReady();
-
-    document.getElementById('sltp-instruction').textContent = 'Drag the lines to set your Entry, SL and TP';
-
-  } catch(e) {
-    console.warn('createOrderLine failed:', e.message);
+  function makeLine(type, linePrice, color, label) {
+    try {
+      const id = chart.createShape(
+        { price: linePrice },
+        {
+          shape: 'horizontal_line',
+          disableSelection: false,
+          disableSave: true,
+          lock: false,
+          overrides: {
+            linecolor:        color,
+            linewidth:        2,
+            linestyle:        type === 'entry' ? 0 : 2,
+            showLabel:        true,
+            text:             label,
+            textcolor:        color,
+            horzLabelsAlign:  'right',
+            fontsize:         12,
+          }
+        }
+      );
+      orderLines[type] = id;
+    } catch(e) {
+      console.warn('createShape failed:', e.message);
+    }
   }
+
+  makeLine('entry', entryPrice, '#ffd740', 'ENTRY');
+  makeLine('sl',    slPrice,    '#ff3d5a', 'SL');
+  makeLine('tp',    tpPrice,    '#00e676', 'TP');
+
+  // Poll shape positions every 200ms to detect drag moves
+  // This is the most reliable method since shape move callbacks vary per TV version
+  if(window._sltpPollInterval) clearInterval(window._sltpPollInterval);
+  window._sltpPollInterval = setInterval(() => {
+    if(!state.tvWidget || state.phase !== 'analyse') return;
+    const chart = state.tvWidget.chart();
+    for(const type of ['entry','sl','tp']) {
+      if(!orderLines[type]) continue;
+      try {
+        const pts = chart.getShapeById(orderLines[type]).getPoints();
+        if(pts && pts[0] && pts[0].price != null) {
+          const newPrice = pts[0].price;
+          if(newPrice !== state[type+'Price']) {
+            state[type+'Price'] = newPrice;
+            updateSLTPStats();
+            checkLockReady();
+          }
+        }
+      } catch(e) {}
+    }
+  }, 200);
+
+  updateSLTPStats();
+  checkLockReady();
+  document.getElementById('sltp-instruction').textContent = 'Drag the ENTRY, SL and TP lines on the chart';
 }
 
 function removeOrderLines() {
+  if(!state.tvWidget) { orderLines = { entry:null, sl:null, tp:null }; return; }
+  const chart = state.tvWidget.chart();
   for(const key of ['entry','sl','tp']) {
     if(orderLines[key]) {
-      try { orderLines[key].remove(); } catch(e) {}
+      try { chart.removeEntity(orderLines[key]); } catch(e) {}
       orderLines[key] = null;
     }
   }
@@ -1375,6 +1386,7 @@ function lockIn() {
   }
   state.locked = true;
   removeOrderLines();
+  if(window._sltpPollInterval) { clearInterval(window._sltpPollInterval); window._sltpPollInterval = null; }
   const slD = Math.abs(state.entryPrice - state.slPrice);
   const tpD = Math.abs(state.tpPrice - state.entryPrice);
   const rr  = slD > 0 ? (tpD/slD).toFixed(1) : '?';
