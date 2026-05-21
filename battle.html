@@ -749,14 +749,31 @@ async function loadScenario() {
   state.scenarioData = hasData ? merged : generateSimData();
   state.scenarioKey  = keys[2];
 
-  // Build real trading-day timestamp array for the scenario start
-  // We need enough days to cover d1 bars (6 quarters ~ 6*65 = ~390 trading days)
-  // Add extra buffer for intraday (each trading day = up to 1440 m1 bars)
-  const scenarioStartMs = quarterStartMs(keys[0]);
-  // 7 days/week * 6 quarters * ~91 days = ~550 days needed; use 700 for buffer
-  state.tradingDays = buildAllDayStarts(scenarioStartMs, 700);
+  // Build per-bar real timestamps for d1.
+  // Each quarter has a known start date; we assign real calendar days sequentially
+  // within each quarter, starting from that quarter's first day.
+  // This gives each d1 bar a real date that matches the actual quarter.
+  state.d1Timestamps = buildD1Timestamps(keys, results);
 
   return true;
+}
+
+// Build an array of real UTC timestamps for each d1 bar across all loaded quarters.
+// Each quarter starts on its real calendar date; bars advance 1 calendar day per bar.
+// This is the ground truth — intraday timestamps are derived from this.
+function buildD1Timestamps(keys, results) {
+  const DAY = 86400000;
+  const timestamps = [];
+  for(let qi = 0; qi < keys.length; qi++) {
+    const data = results[qi];
+    if(!data || !data.d1) continue;
+    const qStartMs = quarterStartMs(keys[qi]);
+    const nBars = data.d1.length;
+    for(let i = 0; i < nBars; i++) {
+      timestamps.push(qStartMs + i * DAY);
+    }
+  }
+  return timestamps;
 }
 
 // Keep loadQuarter as alias for compatibility
@@ -863,27 +880,28 @@ function createDatafeed() {
       if(!slice.length) { onResult([], {noData:true}); return; }
 
       const DAY_MS = 86400000;
-      const td     = state.tradingDays; // real Mon-Fri UTC timestamps built in loadScenario
 
       // Convert bar index to real UTC timestamp.
-      // ALL days including weekends are valid (TV sessionsSpec is 24x7, all 7 days active).
-      // Daily: 1 bar per calendar day (index 0 = scenario start, index 1 = next day, etc.)
-      // Weekly: 1 bar per 7 calendar days
-      // Intraday: bars fill each calendar day including Sat/Sun (24x7 forex)
+      // Daily: use d1Timestamps — each bar has an exact real calendar date per quarter
+      // Weekly: use every 7th d1 timestamp
+      // Intraday: derive from d1Timestamps — each d1 day contains barsPerDay intraday bars
+      const d1ts = state.d1Timestamps;
       function barIndexToMs(barIdx) {
-        if(!td || !td.length) return Date.UTC(2015,0,4) + barIdx * DAY_MS;
+        if(!d1ts || !d1ts.length) return Date.UTC(2015,0,4) + barIdx * DAY_MS;
         if (resolution === 'D') {
-          return td[Math.min(barIdx, td.length - 1)];
+          return d1ts[Math.min(barIdx, d1ts.length - 1)];
         }
         if (resolution === 'W') {
-          return td[Math.min(barIdx * 7, td.length - 1)];
+          // Each weekly bar spans 7 calendar days; use d1 bar 0, 7, 14, ...
+          return d1ts[Math.min(barIdx * 7, d1ts.length - 1)];
         }
-        // Intraday: linear across all calendar days (24x7)
+        // Intraday: figure out which d1 bar this falls into, then add intraday offset
+        // d1 has N bars; intraday has N * barsPerDay bars
         const stepMs     = (TF_MINS[resolution] || 15) * 60 * 1000;
         const barsPerDay = DAY_MS / stepMs;
         const dayIdx     = Math.floor(barIdx / barsPerDay);
         const barInDay   = barIdx % barsPerDay;
-        const dayStart   = td[Math.min(dayIdx, td.length - 1)];
+        const dayStart   = d1ts[Math.min(dayIdx, d1ts.length - 1)];
         return dayStart + barInDay * stepMs;
       }
 
@@ -1315,25 +1333,25 @@ function startReplay() {
       }
     }
 
-    // Append candle to TV chart — same 24x7 calendar logic as getBars
+    // Append candle to TV chart — same d1Timestamps logic as getBars
     if(tvRealtimeCb) {
       const DAY_MS = 86400000;
-      const td     = state.tradingDays;
+      const d1ts   = state.d1Timestamps;
       const tf     = state.entryTF;
       const barIdx = state.cursorIndex + i;
       let ts;
-      if(!td || !td.length) {
+      if(!d1ts || !d1ts.length) {
         ts = Date.UTC(2015,0,4) + barIdx * DAY_MS;
       } else if (tf === 'D') {
-        ts = td[Math.min(barIdx, td.length - 1)];
+        ts = d1ts[Math.min(barIdx, d1ts.length - 1)];
       } else if (tf === 'W') {
-        ts = td[Math.min(barIdx * 7, td.length - 1)];
+        ts = d1ts[Math.min(barIdx * 7, d1ts.length - 1)];
       } else {
         const stepMs     = (TF_MINS[tf] || 15) * 60 * 1000;
         const barsPerDay = DAY_MS / stepMs;
         const dayIdx     = Math.floor(barIdx / barsPerDay);
         const barInDay   = barIdx % barsPerDay;
-        ts = td[Math.min(dayIdx, td.length - 1)] + barInDay * stepMs;
+        ts = d1ts[Math.min(dayIdx, d1ts.length - 1)] + barInDay * stepMs;
       }
       tvRealtimeCb({ time: ts, open: c.o, high: c.h, low: c.l, close: c.c, volume: 0 });
     }
