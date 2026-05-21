@@ -839,8 +839,10 @@ function createDatafeed() {
         minmove2:    0,
         has_intraday:           true,
         intraday_multipliers:   ['1','5','15','60','240'],
-        has_daily:              true,
-        has_weekly_and_monthly: true,
+        // has_daily: false → TV aggregates Daily from our 1H bars itself
+        // This completely bypasses _alignBarsTime for Daily resolution
+        has_daily:              false,
+        has_weekly_and_monthly: false,
         supported_resolutions:  ['1','5','15','60','240','D','W'],
         visible_plots_set:      'ohlc',
         has_empty_bars:         false,
