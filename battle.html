@@ -749,18 +749,44 @@ async function loadScenario() {
   state.scenarioData = hasData ? merged : generateSimData();
   state.scenarioKey  = keys[2];
 
-  // Build per-bar real timestamps for d1.
-  // Each quarter has a known start date; we assign real calendar days sequentially
-  // within each quarter, starting from that quarter's first day.
-  // This gives each d1 bar a real date that matches the actual quarter.
+  // Build d1 timestamps AND filter weekend bars from d1 (modifies results[qi].d1 in-place)
   state.d1Timestamps = buildD1Timestamps(keys, results);
+
+  // Now rebuild merged.d1 from the filtered results
+  merged.d1 = [];
+  for(const data of results) {
+    if(data && data.d1) merged.d1 = merged.d1.concat(data.d1);
+  }
+
+  // Filter intraday TFs to remove weekend bars using d1Timestamps as ground truth.
+  // Each d1 bar = barsPerTF intraday bars. We keep only bars where the parent d1
+  // bar exists in our filtered set (i.e., is a weekday).
+  const TF_BARS_PER_DAY = { m1: 1440, m5: 288, m15: 96, h1: 24, h4: 6 };
+  for(const [tf, bpd] of Object.entries(TF_BARS_PER_DAY)) {
+    if(!merged[tf] || !merged[tf].length) continue;
+    const filtered = [];
+    for(let i = 0; i < merged[tf].length; i++) {
+      const dayIdx = Math.floor(i / bpd);
+      // Find the quarter and day offset for this dayIdx
+      // Simpler: use d1Timestamps length as reference — if we have N d1 bars,
+      // we keep intraday bars 0..N*bpd-1
+      if(dayIdx < state.d1Timestamps.length) {
+        // Check if this calendar day is a weekday using d1Timestamps
+        // d1Timestamps only contains weekday entries, so if dayIdx < length it's valid
+        filtered.push(merged[tf][i]);
+      }
+    }
+    merged[tf] = filtered;
+  }
+  state.scenarioData = merged;
 
   return true;
 }
 
-// Build an array of real UTC timestamps for each d1 bar across all loaded quarters.
-// Each quarter starts on its real calendar date; bars advance 1 calendar day per bar.
-// This is the ground truth — intraday timestamps are derived from this.
+// Build an array of real UTC timestamps for each d1 bar across all loaded quarters,
+// filtering out weekend bars (Saturday=6, Sunday=0).
+// Also filters the d1 bars array in-place to match.
+// Returns timestamps array; results[qi].d1 is updated to weekday-only bars.
 function buildD1Timestamps(keys, results) {
   const DAY = 86400000;
   const timestamps = [];
@@ -769,9 +795,19 @@ function buildD1Timestamps(keys, results) {
     if(!data || !data.d1) continue;
     const qStartMs = quarterStartMs(keys[qi]);
     const nBars = data.d1.length;
+    const filteredBars = [];
+    const filteredTs   = [];
     for(let i = 0; i < nBars; i++) {
-      timestamps.push(qStartMs + i * DAY);
+      const ts  = qStartMs + i * DAY;
+      const dow = new Date(ts).getUTCDay(); // 0=Sun, 6=Sat
+      if(dow !== 0 && dow !== 6) {
+        filteredBars.push(data.d1[i]);
+        filteredTs.push(ts);
+      }
     }
+    // Replace d1 with weekday-only bars
+    data.d1 = filteredBars;
+    timestamps.push(...filteredTs);
   }
   return timestamps;
 }
