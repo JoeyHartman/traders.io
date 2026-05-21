@@ -987,7 +987,6 @@ function initTV() {
       'paneProperties.vertGridProperties.color':         'rgba(24,32,48,0.8)',
       'paneProperties.horzGridProperties.color':         'rgba(24,32,48,0.8)',
       'scalesProperties.textColor':                      '#3d5270',
-      'scalesProperties.fontSize':                        1,
       'timeScale.rightOffset':                            5,
       'mainSeriesProperties.candleStyle.upColor':        '#00e676',
       'mainSeriesProperties.candleStyle.downColor':      '#ff3d5a',
@@ -1000,6 +999,36 @@ function initTV() {
       'volume.volume.color.0':   '#ff3d5a',
       'volume.volume.color.1':   '#00e676',
       'volume.volume.transparency': 100,
+    },
+    custom_formatters: {
+      timeFormatter: {
+        format: (date) => {
+          // Show day-of-week + time, but never the actual date
+          const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+          const dow  = days[date.getUTCDay()];
+          const hh   = String(date.getUTCHours()).padStart(2,'0');
+          const mm   = String(date.getUTCMinutes()).padStart(2,'0');
+          return `${dow} ${hh}:${mm}`;
+        },
+        formatLocal: (date) => {
+          const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+          const dow  = days[date.getUTCDay()];
+          const hh   = String(date.getUTCHours()).padStart(2,'0');
+          const mm   = String(date.getUTCMinutes()).padStart(2,'0');
+          return `${dow} ${hh}:${mm}`;
+        },
+      },
+      dateFormatter: {
+        format: (date) => {
+          // On daily chart: show only day-of-week, never the date
+          const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+          return days[date.getUTCDay()];
+        },
+        formatLocal: (date) => {
+          const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+          return days[date.getUTCDay()];
+        },
+      },
     },
     disabled_features: [
       'header_symbol_search','header_compare','header_screenshot',
