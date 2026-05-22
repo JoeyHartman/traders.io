@@ -1149,6 +1149,7 @@ function initOrderLines() {
   makeLine('tp',    tpPrice,    '#00e676', 'TP');
 
   // Poll shape positions every 200ms to detect drag moves
+  let _lastDir = null;
   if(window._sltpPollInterval) clearInterval(window._sltpPollInterval);
   window._sltpPollInterval = setInterval(() => {
     if(!state.tvWidget || state.phase !== 'analyse') return;
@@ -1170,18 +1171,26 @@ function initOrderLines() {
     if(changed) {
       updateSLTPStats();
       checkLockReady();
-      // Update entry line color+label based on current direction (no recreation needed)
-      const dir = getDirection();
-      if(dir && orderLines.entry) {
-        const color = dir === 'BUY' ? '#00e676' : '#ff3d5a';
-        try {
-          chart.getShapeById(orderLines.entry).setProperties({
-            linecolor:  color,
-            textcolor:  color,
-            text:       `ENTRY • ${dir}`,
-          });
-        } catch(e) {}
+    }
+    // Update entry line label when direction changes
+    const dir = getDirection();
+    if(dir && dir !== _lastDir) {
+      _lastDir = dir;
+      const color = dir === 'BUY' ? '#00e676' : '#ff3d5a';
+      // Remove old entry line and redraw with new label
+      if(orderLines.entry) {
+        try { chart.removeEntity(orderLines.entry); } catch(e) {}
+        orderLines.entry = null;
       }
+      try {
+        orderLines.entry = chart.createShape(
+          { price: state.entryPrice },
+          { shape: 'horizontal_line', disableSelection: false, disableSave: true, lock: false,
+            overrides: { linecolor: color, linewidth: 2, linestyle: 0,
+              showLabel: true, text: `ENTRY • ${dir}`, textcolor: color,
+              horzLabelsAlign: 'right', fontsize: 12 } }
+        );
+      } catch(e) {}
     }
   }, 200);
 
@@ -1409,7 +1418,6 @@ function lockIn() {
     showToast('Set Entry, SL and TP first!'); return;
   }
   state.locked = true;
-  removeOrderLines();
   if(window._sltpPollInterval) { clearInterval(window._sltpPollInterval); window._sltpPollInterval = null; }
   const slD = Math.abs(state.entryPrice - state.slPrice);
   const tpD = Math.abs(state.tpPrice - state.entryPrice);
@@ -1475,6 +1483,10 @@ function startReplay() {
   let myOutcome  = null;
   let entryHit   = false;
   const isLong   = state.tpPrice > state.entryPrice;
+
+  // Remove analyse lines before adding replay lines
+  removeOrderLines();
+  if(window._sltpPollInterval) { clearInterval(window._sltpPollInterval); window._sltpPollInterval = null; }
 
   // Add entry + SL/TP lines on chart for replay visibility
   function addReplayLine(price, color, label) {
