@@ -1141,29 +1141,47 @@ function initOrderLines() {
     }
   }
 
-  makeLine('entry', entryPrice, '#ffd740', 'ENTRY');
+  // Initial direction: SL below entry = BUY
+  const initDir   = slPrice < entryPrice ? 'BUY' : 'SELL';
+  const initColor = initDir === 'BUY' ? '#00e676' : '#ff3d5a';
+  makeLine('entry', entryPrice, initColor, `ENTRY • ${initDir}`);
   makeLine('sl',    slPrice,    '#ff3d5a', 'SL');
   makeLine('tp',    tpPrice,    '#00e676', 'TP');
 
   // Poll shape positions every 200ms to detect drag moves
-  // This is the most reliable method since shape move callbacks vary per TV version
   if(window._sltpPollInterval) clearInterval(window._sltpPollInterval);
   window._sltpPollInterval = setInterval(() => {
     if(!state.tvWidget || state.phase !== 'analyse') return;
     const chart = state.tvWidget.chart();
+    let changed = false;
     for(const type of ['entry','sl','tp']) {
       if(!orderLines[type]) continue;
       try {
         const pts = chart.getShapeById(orderLines[type]).getPoints();
         if(pts && pts[0] && pts[0].price != null) {
           const newPrice = pts[0].price;
-          if(newPrice !== state[type+'Price']) {
+          if(Math.abs(newPrice - (state[type+'Price'] || 0)) > 0.000001) {
             state[type+'Price'] = newPrice;
-            updateSLTPStats();
-            checkLockReady();
+            changed = true;
           }
         }
       } catch(e) {}
+    }
+    if(changed) {
+      updateSLTPStats();
+      checkLockReady();
+      // Update entry line color+label based on current direction (no recreation needed)
+      const dir = getDirection();
+      if(dir && orderLines.entry) {
+        const color = dir === 'BUY' ? '#00e676' : '#ff3d5a';
+        try {
+          chart.getShapeById(orderLines.entry).setProperties({
+            linecolor:  color,
+            textcolor:  color,
+            text:       `ENTRY • ${dir}`,
+          });
+        } catch(e) {}
+      }
     }
   }, 200);
 
@@ -1204,41 +1222,6 @@ function getDirection() {
   return state.slPrice < state.entryPrice ? 'BUY' : 'SELL';
 }
 
-function updateEntryLineLabel() {
-  if(!state.tvWidget || !orderLines.entry) return;
-  const dir = getDirection();
-  if(!dir) return;
-  const color = dir === 'BUY' ? '#00e676' : '#ff3d5a';
-  const label = `ENTRY • ${dir}`;
-  try {
-    const chart = state.tvWidget.chart();
-    // Update label by removing and recreating the entry line at same price
-    if(orderLines.entry) {
-      try { chart.removeEntity(orderLines.entry); } catch(e) {}
-      orderLines.entry = null;
-    }
-    orderLines.entry = chart.createShape(
-      { price: state.entryPrice },
-      {
-        shape: 'horizontal_line',
-        disableSelection: false,
-        disableSave: true,
-        lock: false,
-        overrides: {
-          linecolor:       color,
-          linewidth:       2,
-          linestyle:       0,
-          showLabel:       true,
-          text:            label,
-          textcolor:       color,
-          horzLabelsAlign: 'right',
-          fontsize:        12,
-        }
-      }
-    );
-  } catch(e) {}
-}
-
 function updateSLTPStats() {
   const pip = CFG.PIP[state.symbol] || 0.0001;
   if(state.slPrice && state.entryPrice) {
@@ -1260,8 +1243,6 @@ function updateSLTPStats() {
       document.getElementById('b-rr').textContent   = '1:' + rr;
     }
   }
-  // Update direction label on entry line
-  updateEntryLineLabel();
 }
 
 // ════════════════════════════════════════════════════
