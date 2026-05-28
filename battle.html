@@ -1138,17 +1138,24 @@ function readdOrderLines() {
 let orderLines = { entry: null, sl: null, tp: null };
 
 // Draw or redraw a single horizontal line on the chart
-function drawLine(type, price, color, label, style) {
+// createShape in TV v31 returns a Promise — we resolve it and store the real ID
+async function drawLine(type, price, color, label, style) {
   if(!state.tvWidget) return;
   const chart = state.tvWidget.chart();
-  if(orderLines[type]) { try { chart.removeEntity(orderLines[type]); } catch(e) {} orderLines[type] = null; }
+  // Remove existing line for this type
+  if(orderLines[type]) {
+    try { chart.removeEntity(orderLines[type]); } catch(e) {}
+    orderLines[type] = null;
+  }
   if(price == null || isNaN(price)) return;
   try {
-    orderLines[type] = chart.createShape({ price }, {
+    const result = chart.createShape({ price }, {
       shape: 'horizontal_line', disableSelection: true, disableSave: true, lock: true,
       overrides: { linecolor: color, linewidth: 2, linestyle: style,
         showLabel: true, text: label, textcolor: color, horzLabelsAlign: 'right', fontsize: 12 }
     });
+    // createShape may return a Promise or a direct ID depending on TV version
+    orderLines[type] = (result && typeof result.then === 'function') ? await result : result;
   } catch(e) {}
 }
 
@@ -1176,7 +1183,7 @@ function onPriceInput(type) {
 }
 
 // Redraw all three lines based on current state prices
-function refreshLines() {
+async function refreshLines() {
   const dir   = getDirection();
   const ec    = !dir ? '#ffd740' : dir === 'BUY' ? '#00e676' : '#ff3d5a';
   const elabel = dir ? `ENTRY • ${dir}` : 'ENTRY';
@@ -1188,9 +1195,9 @@ function refreshLines() {
     dirLabel.style.color = dir === 'BUY' ? 'var(--up)' : dir === 'SELL' ? 'var(--down)' : 'var(--gold)';
   }
 
-  drawLine('entry', state.entryPrice, ec,        elabel,  0);
-  drawLine('sl',    state.slPrice,    '#ff3d5a',  'SL',    2);
-  drawLine('tp',    state.tpPrice,    '#00e676',  'TP',    2);
+  await drawLine('entry', state.entryPrice, ec,        elabel,  0);
+  await drawLine('sl',    state.slPrice,    '#ff3d5a',  'SL',    2);
+  await drawLine('tp',    state.tpPrice,    '#00e676',  'TP',    2);
 }
 
 // Initialize inputs with default prices when battle starts
@@ -1599,8 +1606,8 @@ function startReplay() {
     }
 
     // Update PnL display
-    const isLong = state.tpPrice > state.entryPrice;
-    const diff   = (isLong ? 1 : -1) * (c.c - state.entryPrice);
+    const isLongPnl = state.tpPrice > state.entryPrice;
+    const diff   = (isLongPnl ? 1 : -1) * (c.c - state.entryPrice);
     const pipVal = pips(state.symbol, diff) * (diff >= 0 ? 1 : -1);
     const pnlEl  = document.getElementById('b-pnl');
     pnlEl.textContent = (pipVal >= 0 ? '+' : '') + pipVal + ' pips';
