@@ -36,8 +36,9 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  overflow: hidden;
+  justify-content: flex-start;
+  overflow-y: auto;
+  padding: 48px 16px 40px;
 }
 
 /* Animated background grid */
@@ -373,7 +374,7 @@ input::placeholder { color: var(--muted); }
 </div>
 
 <!-- Auth card -->
-<div class="card" style="margin-top: 28px;">
+<div class="card">
 
   <div class="logo">TRADERS.IO</div>
   <div class="logo-sub">THE TRADING ARENA</div>
@@ -484,10 +485,13 @@ input::placeholder { color: var(--muted); }
 
     <label>How did you hear about us? <span style="color:var(--muted);font-weight:400;text-transform:none">— optional</span></label>
     <div class="options" id="referral-opts">
-      <button class="opt-btn" data-val="twitter" onclick="selectOpt(this,'referral')">Twitter/X</button>
-      <button class="opt-btn" data-val="friend" onclick="selectOpt(this,'referral')">Friend</button>
-      <button class="opt-btn" data-val="youtube" onclick="selectOpt(this,'referral')">YouTube</button>
-      <button class="opt-btn" data-val="other" onclick="selectOpt(this,'referral')">Other</button>
+      <button class="opt-btn" data-val="twitter" onclick="selectOpt(this,'referral');showReferralDetail(this)">Twitter/X</button>
+      <button class="opt-btn" data-val="friend" onclick="selectOpt(this,'referral');showReferralDetail(this)">Friend</button>
+      <button class="opt-btn" data-val="youtube" onclick="selectOpt(this,'referral');showReferralDetail(this)">YouTube</button>
+      <button class="opt-btn" data-val="other" onclick="selectOpt(this,'referral');showReferralDetail(this)">Other</button>
+    </div>
+    <div id="referral-detail" style="display:none;margin-top:8px;">
+      <input type="text" id="referral-detail-input" placeholder="e.g. channel name, friend's name, ..." style="margin-bottom:0;">
     </div>
 
     <button class="btn-primary" onclick="saveProfile()">SAVE & START TRADING →</button>
@@ -579,18 +583,40 @@ function selectOpt(btn, group) {
   selections[group] = btn.dataset.val;
 }
 
+function showReferralDetail(btn) {
+  const detail = document.getElementById('referral-detail');
+  const input  = document.getElementById('referral-detail-input');
+  const val    = btn.dataset.val;
+  if(val === 'youtube' || val === 'other' || val === 'friend') {
+    detail.style.display = 'block';
+    const placeholders = {
+      youtube: 'Which YouTube channel?',
+      friend:  "Friend's name or username",
+      other:   'Where did you hear about us?',
+    };
+    input.placeholder = placeholders[val] || 'Tell us more...';
+    input.focus();
+  } else {
+    detail.style.display = 'none';
+  }
+}
+
 async function saveProfile() {
   const { data: { session } } = await sb.auth.getSession();
   if(!session) { goToBattle(); return; }
 
-  const twitter = document.getElementById('twitter-input').value.trim();
+  const twitter  = document.getElementById('twitter-input').value.trim();
+  const refDetail = document.getElementById('referral-detail-input').value.trim();
+  const refSource = selections.referral
+    ? (refDetail ? selections.referral + ':' + refDetail : selections.referral)
+    : null;
 
   const { error } = await sb.from('profiles').update({
-    trading_style:  selections.style,
-    experience:     selections.exp,
-    profitable:     selections.profit,
-    twitter_handle: twitter || null,
-    referral_source: selections.referral,
+    trading_style:   selections.style,
+    experience:      selections.exp,
+    profitable:      selections.profit,
+    twitter_handle:  twitter || null,
+    referral_source: refSource,
   }).eq('id', session.user.id);
 
   if(error) { showToast(error.message, true); return; }
