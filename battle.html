@@ -1232,14 +1232,10 @@ function initOrderLines() {
 
 
 function removeOrderLines() {
-  if(!state.tvWidget) { orderLines = { entry:null, sl:null, tp:null }; return; }
-  const chart = state.tvWidget.chart();
-  for(const key of ['entry','sl','tp']) {
-    if(orderLines[key]) {
-      try { chart.removeEntity(orderLines[key]); } catch(e) {}
-      orderLines[key] = null;
-    }
-  }
+  orderLines = { entry: null, sl: null, tp: null };
+  if(!state.tvWidget) return;
+  // Use removeAllShapes — more reliable than removeEntity with Promise IDs in TV v31
+  try { state.tvWidget.chart().removeAllShapes(); } catch(e) {}
 }
 
 function checkLockReady() {
@@ -1364,7 +1360,7 @@ function generateOpponents() {
   state.opponents = Array.from({length:n}, (_,i) => ({
     name:   names[i % names.length],
     locked: false,
-    lockTime: Math.random() * 180 + 60, // lock in between 60-240 seconds
+    lockTime: Math.random() * 160 + 20, // lock in between 20-180s (within analyse phase)
     sl:     null, tp: null, rr: null, outcome: null, pips: 0,
   }));
 }
@@ -1547,9 +1543,8 @@ function startReplay() {
     if(i >= candles.length || i >= CFG.MAX_BARS) {
       if(!myOutcome) myOutcome = 'open';
       // Remove replay lines
-      for(const id of Object.values(replayLines)) {
-        if(id) try { state.tvWidget.chart().removeEntity(id); } catch(e) {}
-      }
+      // Remove replay lines
+      try { state.tvWidget.chart().removeAllShapes(); } catch(e) {}
       endBattle(myOutcome, i);
       return;
     }
