@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Traders.io — Sign In</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bg:      #06090f;
+  --surface: #0b1120;
+  --surface2:#101825;
+  --border:  #182030;
+  --border2: #1e2e45;
+  --up:      #00e676;
+  --down:    #ff3d5a;
+  --gold:    #ffd740;
+  --accent:  #00b4ff;
+  --purple:  #a855f7;
+  --text:    #dde8ff;
+  --muted:   #3d5270;
+  --fd: 'Barlow Condensed', sans-serif;
+  --fm: 'JetBrains Mono', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--fm);
+  font-size: 13px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Animated background grid */
+.bg-grid {
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,180,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,180,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+/* Glowing orbs */
+.bg-orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  opacity: 0.15;
+}
+.bg-orb-1 {
+  width: 600px; height: 600px;
+  background: var(--accent);
+  top: -200px; left: -200px;
+  animation: orb-float 8s ease-in-out infinite;
+}
+.bg-orb-2 {
+  width: 400px; height: 400px;
+  background: var(--purple);
+  bottom: -100px; right: -100px;
+  animation: orb-float 10s ease-in-out infinite reverse;
+}
+@keyframes orb-float {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(30px, 20px); }
+}
+
+/* Scrolling ticker at top */
+.ticker {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 28px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  z-index: 10;
+}
+.ticker-inner {
+  display: flex;
+  gap: 48px;
+  white-space: nowrap;
+  animation: ticker-scroll 20s linear infinite;
+  font-size: 11px;
+  color: var(--muted);
+}
+.ticker-item { display: flex; gap: 8px; align-items: center; }
+.ticker-item .pair { color: var(--text); font-weight: 600; }
+.ticker-item .up { color: var(--up); }
+.ticker-item .dn { color: var(--down); }
+@keyframes ticker-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* Main card */
+.card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 420px;
+  padding: 40px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 16px;
+  box-shadow: 0 0 0 1px rgba(0,180,255,0.05), 0 32px 64px rgba(0,0,0,0.4);
+}
+
+.logo {
+  font-family: var(--fd);
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  text-align: center;
+  margin-bottom: 4px;
+}
+.logo-sub {
+  text-align: center;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  margin-bottom: 32px;
+}
+
+/* Steps */
+.step { display: none; }
+.step.active { display: block; }
+
+.step-title {
+  font-family: var(--fd);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+.step-sub {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+/* Form elements */
+label {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+input[type="email"],
+input[type="text"] {
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: var(--fm);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+  margin-bottom: 16px;
+}
+input:focus { border-color: var(--accent); }
+input::placeholder { color: var(--muted); }
+
+/* Option buttons (trading style etc) */
+.options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.options.three { grid-template-columns: 1fr 1fr 1fr; }
+
+.opt-btn {
+  padding: 10px 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  color: var(--muted);
+  font-family: var(--fm);
+  font-size: 11px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s;
+  line-height: 1.4;
+}
+.opt-btn:hover { border-color: var(--border); color: var(--text); }
+.opt-btn.selected {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(0,180,255,0.06);
+}
+.opt-btn .opt-icon { font-size: 18px; display: block; margin-bottom: 4px; }
+.opt-btn .opt-label { font-weight: 600; display: block; }
+.opt-btn .opt-desc { font-size: 10px; color: var(--muted); margin-top: 2px; }
+.opt-btn.selected .opt-desc { color: rgba(0,180,255,0.6); }
+
+/* Primary button */
+.btn-primary {
+  width: 100%;
+  padding: 14px;
+  background: var(--up);
+  border: none;
+  border-radius: 8px;
+  color: #000;
+  font-family: var(--fd);
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-top: 8px;
+}
+.btn-primary:hover { background: #00ff8a; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,230,118,0.25); }
+.btn-primary:disabled { background: var(--border2); color: var(--muted); cursor: not-allowed; transform: none; box-shadow: none; }
+
+.btn-secondary {
+  width: 100%;
+  padding: 12px;
+  background: transparent;
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  color: var(--muted);
+  font-family: var(--fm);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-top: 8px;
+}
+.btn-secondary:hover { border-color: var(--border); color: var(--text); }
+
+/* Divider */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+.divider::before, .divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* Wallet button */
+.btn-wallet {
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: var(--fm);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.btn-wallet:hover { border-color: var(--gold); color: var(--gold); }
+.btn-wallet svg { width: 20px; height: 20px; }
+
+/* Progress dots */
+.progress {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 28px;
+}
+.prog-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--border2);
+  transition: all 0.3s;
+}
+.prog-dot.active { background: var(--accent); width: 20px; border-radius: 3px; }
+.prog-dot.done { background: var(--up); }
+
+/* Success state */
+.success-icon {
+  width: 56px; height: 56px;
+  background: rgba(0,230,118,0.1);
+  border: 1px solid rgba(0,230,118,0.3);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px;
+  margin: 0 auto 16px;
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 12px;
+  color: var(--text);
+  z-index: 100;
+  transition: transform 0.3s;
+  white-space: nowrap;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+.toast.error { border-color: var(--down); color: var(--down); }
+
+/* Skip link */
+.skip-link {
+  text-align: center;
+  margin-top: 16px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.skip-link a {
+  color: var(--muted);
+  text-decoration: underline;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.skip-link a:hover { color: var(--text); }
+</style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+<div class="bg-orb bg-orb-1"></div>
+<div class="bg-orb bg-orb-2"></div>
+
+<!-- Ticker -->
+<div class="ticker">
+  <div class="ticker-inner" id="ticker">
+    <span class="ticker-item"><span class="pair">EUR/USD</span><span class="up">▲ 1.0842</span><span class="up">+0.12%</span></span>
+    <span class="ticker-item"><span class="pair">GBP/USD</span><span class="up">▲ 1.2634</span><span class="up">+0.08%</span></span>
+    <span class="ticker-item"><span class="pair">USD/JPY</span><span class="dn">▼ 154.82</span><span class="dn">-0.21%</span></span>
+    <span class="ticker-item"><span class="pair">AUD/USD</span><span class="dn">▼ 0.6418</span><span class="dn">-0.05%</span></span>
+    <span class="ticker-item"><span class="pair">USD/CHF</span><span class="up">▲ 0.9012</span><span class="up">+0.03%</span></span>
+    <span class="ticker-item"><span class="pair">USD/CAD</span><span class="dn">▼ 1.3645</span><span class="dn">-0.09%</span></span>
+    <!-- duplicate for seamless loop -->
+    <span class="ticker-item"><span class="pair">EUR/USD</span><span class="up">▲ 1.0842</span><span class="up">+0.12%</span></span>
+    <span class="ticker-item"><span class="pair">GBP/USD</span><span class="up">▲ 1.2634</span><span class="up">+0.08%</span></span>
+    <span class="ticker-item"><span class="pair">USD/JPY</span><span class="dn">▼ 154.82</span><span class="dn">-0.21%</span></span>
+    <span class="ticker-item"><span class="pair">AUD/USD</span><span class="dn">▼ 0.6418</span><span class="dn">-0.05%</span></span>
+    <span class="ticker-item"><span class="pair">USD/CHF</span><span class="up">▲ 0.9012</span><span class="up">+0.03%</span></span>
+    <span class="ticker-item"><span class="pair">USD/CAD</span><span class="dn">▼ 1.3645</span><span class="dn">-0.09%</span></span>
+  </div>
+</div>
+
+<!-- Auth card -->
+<div class="card" style="margin-top: 28px;">
+
+  <div class="logo">TRADERS.IO</div>
+  <div class="logo-sub">THE TRADING ARENA</div>
+
+  <!-- Progress -->
+  <div class="progress" id="progress">
+    <div class="prog-dot active" id="dot-0"></div>
+    <div class="prog-dot" id="dot-1"></div>
+    <div class="prog-dot" id="dot-2"></div>
+  </div>
+
+  <!-- Step 1: Email -->
+  <div class="step active" id="step-email">
+    <div class="step-title">Create your account</div>
+    <div class="step-sub">Enter your email — we'll send you a magic link. No password needed.</div>
+
+    <label>Email address</label>
+    <input type="email" id="email-input" placeholder="trader@example.com" autocomplete="email">
+
+    <button class="btn-primary" id="email-btn" onclick="sendMagicLink()">SEND MAGIC LINK →</button>
+
+    <div class="divider">or</div>
+
+    <button class="btn-wallet" onclick="connectWallet()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="7" width="20" height="14" rx="2"/>
+        <path d="M16 12h.01M2 7l10-5 10 5"/>
+      </svg>
+      Connect Wallet (optional)
+    </button>
+
+    <div class="skip-link">
+      Already have an account? <a onclick="sendMagicLink()">Sign in with magic link</a>
+    </div>
+  </div>
+
+  <!-- Step 1b: Magic link sent -->
+  <div class="step" id="step-sent">
+    <div class="success-icon">📨</div>
+    <div class="step-title" style="text-align:center">Check your email</div>
+    <div class="step-sub" style="text-align:center">
+      We sent a magic link to <strong id="sent-email" style="color:var(--text)"></strong>.<br>
+      Click the link to sign in — it expires in 1 hour.
+    </div>
+
+    <button class="btn-secondary" onclick="goToStep('email')">← Use different email</button>
+
+    <div class="skip-link" style="margin-top:12px">
+      <a onclick="skipToGame()">Skip for now — play as guest</a>
+    </div>
+  </div>
+
+  <!-- Step 2: Trading profile -->
+  <div class="step" id="step-profile">
+    <div class="step-title">Your trading profile</div>
+    <div class="step-sub">Help us personalise your battles. All optional — skip anytime.</div>
+
+    <label>Trading style</label>
+    <div class="options three" id="style-opts">
+      <button class="opt-btn" data-val="scalper" onclick="selectOpt(this,'style')">
+        <span class="opt-icon">⚡</span>
+        <span class="opt-label">Scalper</span>
+        <span class="opt-desc">1m – 5m</span>
+      </button>
+      <button class="opt-btn" data-val="daytrader" onclick="selectOpt(this,'style')">
+        <span class="opt-icon">📊</span>
+        <span class="opt-label">Daytrader</span>
+        <span class="opt-desc">15m – 1H</span>
+      </button>
+      <button class="opt-btn" data-val="swing" onclick="selectOpt(this,'style')">
+        <span class="opt-icon">🌊</span>
+        <span class="opt-label">Swing</span>
+        <span class="opt-desc">4H – Daily</span>
+      </button>
+    </div>
+
+    <label>Experience level</label>
+    <div class="options three" id="exp-opts">
+      <button class="opt-btn" data-val="beginner" onclick="selectOpt(this,'exp')">
+        <span class="opt-label">Beginner</span>
+        <span class="opt-desc">&lt; 1 year</span>
+      </button>
+      <button class="opt-btn" data-val="intermediate" onclick="selectOpt(this,'exp')">
+        <span class="opt-label">Intermediate</span>
+        <span class="opt-desc">1 – 3 years</span>
+      </button>
+      <button class="opt-btn" data-val="advanced" onclick="selectOpt(this,'exp')">
+        <span class="opt-label">Advanced</span>
+        <span class="opt-desc">3+ years</span>
+      </button>
+    </div>
+
+    <label>Are you currently profitable?</label>
+    <div class="options" id="profit-opts">
+      <button class="opt-btn" data-val="yes" onclick="selectOpt(this,'profit')">
+        <span class="opt-label" style="color:var(--up)">✓ Yes</span>
+      </button>
+      <button class="opt-btn" data-val="no" onclick="selectOpt(this,'profit')">
+        <span class="opt-label" style="color:var(--down)">✗ Not yet</span>
+      </button>
+      <button class="opt-btn" data-val="sometimes" onclick="selectOpt(this,'profit')">
+        <span class="opt-label">± Sometimes</span>
+      </button>
+    </div>
+
+    <label>X (Twitter) handle <span style="color:var(--muted);font-weight:400;text-transform:none">— optional</span></label>
+    <input type="text" id="twitter-input" placeholder="@yourhandle">
+
+    <label>How did you hear about us? <span style="color:var(--muted);font-weight:400;text-transform:none">— optional</span></label>
+    <div class="options" id="referral-opts">
+      <button class="opt-btn" data-val="twitter" onclick="selectOpt(this,'referral')">Twitter/X</button>
+      <button class="opt-btn" data-val="friend" onclick="selectOpt(this,'referral')">Friend</button>
+      <button class="opt-btn" data-val="youtube" onclick="selectOpt(this,'referral')">YouTube</button>
+      <button class="opt-btn" data-val="other" onclick="selectOpt(this,'referral')">Other</button>
+    </div>
+
+    <button class="btn-primary" onclick="saveProfile()">SAVE & START TRADING →</button>
+    <button class="btn-secondary" onclick="skipToGame()">Skip for now</button>
+  </div>
+
+  <!-- Step 3: All done -->
+  <div class="step" id="step-done">
+    <div class="success-icon">🏆</div>
+    <div class="step-title" style="text-align:center">You're in!</div>
+    <div class="step-sub" style="text-align:center">
+      Welcome to the arena, <strong id="welcome-name" style="color:var(--accent)"></strong>.<br>
+      Your account is ready. Time to battle.
+    </div>
+    <button class="btn-primary" onclick="goToBattle()">ENTER THE ARENA →</button>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://wvltsxiuehzgumzwqucx.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_77h-pibjPD4qoXJfx_YpKQ_XbKbbe97';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Profile selections
+const selections = { style: null, exp: null, profit: null, referral: null };
+
+// Check if already logged in
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if(session) {
+    // Already logged in — check if profile is complete
+    const { data: profile } = await sb.from('profiles').select('*').eq('id', session.user.id).single();
+    if(profile && profile.trading_style) {
+      // Profile complete — go straight to battle
+      goToBattle();
+    } else {
+      // Logged in but no profile yet
+      document.getElementById('welcome-name') && (document.getElementById('welcome-name').textContent = profile?.username || 'Trader');
+      goToStep('profile');
+    }
+  }
+
+  // Handle magic link callback (URL has #access_token)
+  const hash = window.location.hash;
+  if(hash.includes('access_token')) {
+    const { data: { session: newSession } } = await sb.auth.getSession();
+    if(newSession) {
+      const { data: profile } = await sb.from('profiles').select('*').eq('id', newSession.user.id).single();
+      document.getElementById('welcome-name').textContent = profile?.username || 'Trader';
+      goToStep('profile');
+      // Clean URL
+      history.replaceState(null, '', window.location.pathname);
+    }
+  }
+}
+
+async function sendMagicLink() {
+  const email = document.getElementById('email-input').value.trim();
+  if(!email || !email.includes('@')) { showToast('Enter a valid email address', true); return; }
+
+  const btn = document.getElementById('email-btn');
+  btn.disabled = true;
+  btn.textContent = 'SENDING...';
+
+  const { error } = await sb.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo: window.location.origin + '/auth.html',
+    }
+  });
+
+  if(error) {
+    showToast(error.message, true);
+    btn.disabled = false;
+    btn.textContent = 'SEND MAGIC LINK →';
+  } else {
+    document.getElementById('sent-email').textContent = email;
+    goToStep('sent');
+  }
+}
+
+function selectOpt(btn, group) {
+  const container = btn.closest('.options');
+  container.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  selections[group] = btn.dataset.val;
+}
+
+async function saveProfile() {
+  const { data: { session } } = await sb.auth.getSession();
+  if(!session) { goToBattle(); return; }
+
+  const twitter = document.getElementById('twitter-input').value.trim();
+
+  const { error } = await sb.from('profiles').update({
+    trading_style:  selections.style,
+    experience:     selections.exp,
+    profitable:     selections.profit,
+    twitter_handle: twitter || null,
+    referral_source: selections.referral,
+  }).eq('id', session.user.id);
+
+  if(error) { showToast(error.message, true); return; }
+
+  const { data: profile } = await sb.from('profiles').select('username').eq('id', session.user.id).single();
+  document.getElementById('welcome-name').textContent = profile?.username || 'Trader';
+  goToStep('done');
+}
+
+async function connectWallet() {
+  // Placeholder — MetaMask integration for later
+  showToast('Wallet connect coming soon!');
+}
+
+function skipToGame() {
+  goToBattle();
+}
+
+function goToBattle() {
+  window.location.href = 'battle.html';
+}
+
+function goToStep(step) {
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+  document.getElementById('step-' + step).classList.add('active');
+  updateProgress(step);
+}
+
+function updateProgress(step) {
+  const steps = ['email', 'sent', 'profile', 'done'];
+  const stepMap = { email: 0, sent: 0, profile: 1, done: 2 };
+  const current = stepMap[step] ?? 0;
+  document.querySelectorAll('.prog-dot').forEach((dot, i) => {
+    dot.classList.remove('active', 'done');
+    if(i < current) dot.classList.add('done');
+    else if(i === current) dot.classList.add('active');
+  });
+}
+
+function showToast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// Email input — send on Enter
+document.getElementById('email-input').addEventListener('keydown', e => {
+  if(e.key === 'Enter') sendMagicLink();
+});
+
+init();
+</script>
+</body>
+</html>
