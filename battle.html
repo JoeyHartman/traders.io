@@ -1386,10 +1386,11 @@ function startAnalyseTimer() {
   state.opponents.forEach((opp,i) => {
     setTimeout(() => {
       opp.locked = true;
-      // Assign simulated SL/TP based on entry price (will be set once entry price known)
       const el = document.getElementById(`pdot-${i+1}`);
       if(el) { el.classList.remove('active'); el.classList.add('locked'); }
       document.getElementById('locked-count') && (document.getElementById('locked-count').textContent = state.opponents.filter(o=>o.locked).length);
+      // Check if everyone is now locked — start replay if so
+      checkAllLocked();
     }, opp.lockTime * 1000);
   });
 
@@ -1472,7 +1473,19 @@ function lockIn() {
 
   showToast('✓ Locked in — waiting for opponents');
 
-  // If all opponents locked, start replay immediately
+  // Force transition to lockin phase so remaining bot timeouts still fire
+  if(state.phase === 'analyse') {
+    state.phase = 'lockin';
+    document.getElementById('phase-fill').className = 'phase-progress-fill fill-lockin';
+  }
+
+  // If all opponents already locked, start replay immediately
+  // Otherwise wait — the bot setTimeout callbacks will call checkAllLocked()
+  checkAllLocked();
+}
+
+function checkAllLocked() {
+  if(!state.locked) return; // player hasn't locked yet
   const allLocked = state.opponents.every(o => o.locked);
   if(allLocked) startReplay();
 }
