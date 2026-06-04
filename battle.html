@@ -382,7 +382,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--fm);font-size:13px
       <span>🟢 <strong id="online-count">847</strong> online</span>
       <span>🏆 <strong id="player-coins">500</strong> coins</span>
       <span id="auth-nav">
-        <a href="auth.html" style="color:var(--muted);text-decoration:none;font-size:11px;" id="auth-link">Sign in</a>
+        <a href="auth.html" style="color:var(--muted);text-decoration:none;font-size:11px;cursor:pointer;" id="auth-link">Sign in</a>
       </span>
     </div>
   </div>
@@ -591,17 +591,13 @@ async function initAuth() {
     currentUser = session.user;
     const { data } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
     currentProfile = data;
-    // Update UI with username
+    // Update UI with username — link goes to auth.html for account management
     const authLink = document.getElementById('auth-link');
     if(authLink) {
       const name = currentProfile?.username || currentUser.email?.split('@')[0] || 'Account';
       authLink.textContent = '👤 ' + name;
-      authLink.href = '#';
-      authLink.onclick = async (e) => {
-        e.preventDefault();
-        await sb.auth.signOut();
-        window.location.href = 'auth.html';
-      };
+      authLink.href = 'auth.html';
+      authLink.style.color = 'var(--up)';
     }
   }
   // Guests can play — no redirect needed

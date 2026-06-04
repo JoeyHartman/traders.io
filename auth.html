@@ -529,32 +529,67 @@ const selections = { style: null, exp: null, profit: null, referral: null };
 
 // Check if already logged in
 async function init() {
-  const { data: { session } } = await sb.auth.getSession();
-  if(session) {
-    // Already logged in — check if profile is complete
-    const { data: profile } = await sb.from('profiles').select('*').eq('id', session.user.id).single();
-    if(profile && profile.trading_style) {
-      // Profile complete — go straight to battle
-      goToBattle();
-    } else {
-      // Logged in but no profile yet
-      document.getElementById('welcome-name') && (document.getElementById('welcome-name').textContent = profile?.username || 'Trader');
-      goToStep('profile');
-    }
-  }
-
-  // Handle magic link callback (URL has #access_token)
+  // Handle magic link callback first (URL has access_token in hash or query)
   const hash = window.location.hash;
-  if(hash.includes('access_token')) {
+  const params = new URLSearchParams(window.location.search);
+  if(hash.includes('access_token') || params.get('code')) {
+    // Small delay for Supabase to process the token
+    await new Promise(r => setTimeout(r, 500));
     const { data: { session: newSession } } = await sb.auth.getSession();
     if(newSession) {
       const { data: profile } = await sb.from('profiles').select('*').eq('id', newSession.user.id).single();
       document.getElementById('welcome-name').textContent = profile?.username || 'Trader';
       goToStep('profile');
-      // Clean URL
       history.replaceState(null, '', window.location.pathname);
+      return;
     }
   }
+
+  const { data: { session } } = await sb.auth.getSession();
+  if(session) {
+    // Already logged in — show account management instead of redirecting
+    const { data: profile } = await sb.from('profiles').select('*').eq('id', session.user.id).single();
+    showLoggedInScreen(session, profile);
+    return;
+  }
+}
+
+function showLoggedInScreen(session, profile) {
+  // Show a "you're already logged in" screen
+  const card = document.querySelector('.card');
+  const name = profile?.username || session.user.email?.split('@')[0] || 'Trader';
+  document.getElementById('progress').style.display = 'none';
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+
+  // Inject a logged-in screen
+  const div = document.createElement('div');
+  div.className = 'step active';
+  div.innerHTML = `
+    <div class="success-icon">👤</div>
+    <div class="step-title" style="text-align:center">Welcome back</div>
+    <div class="step-sub" style="text-align:center">
+      Signed in as <strong style="color:var(--accent)">${name}</strong><br>
+      <span style="color:var(--muted);font-size:10px">${session.user.email}</span>
+    </div>
+    <button class="btn-primary" onclick="goToBattle()">ENTER THE ARENA →</button>
+    <button class="btn-secondary" style="margin-top:8px" onclick="editProfile()">Edit profile</button>
+    <button class="btn-secondary" style="margin-top:8px;color:var(--down);border-color:var(--down)" onclick="signOut()">Sign out</button>
+  `;
+  card.appendChild(div);
+}
+
+function editProfile() {
+  document.getElementById('progress').style.display = 'flex';
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+  // Remove injected screen
+  const injected = document.querySelector('.step.active');
+  if(injected) injected.remove();
+  goToStep('profile');
+}
+
+async function signOut() {
+  await sb.auth.signOut();
+  window.location.reload();
 }
 
 async function sendMagicLink() {
