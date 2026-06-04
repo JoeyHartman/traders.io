@@ -420,6 +420,7 @@ footer {
     <li><a href="index.html" class="active">Home</a></li>
     <li><a href="about.html">About</a></li>
     <li><a href="contact.html">Contact</a></li>
+    <li><a href="auth.html" id="nav-auth-link">Sign In</a></li>
     <li><a href="battle.html" class="nav-cta">Play Free</a></li>
   </ul>
 </nav>
@@ -573,7 +574,7 @@ footer {
     <p>Join thousands of traders improving their edge — one prediction at a time.</p>
     <div class="email-row">
       <input type="email" placeholder="your@email.com" id="cta-email" />
-      <a href="battle.html" class="btn-primary" style="font-size:18px;padding:14px 28px;white-space:nowrap" onclick="saveEmail()">PLAY FREE →</a>
+      <button class="btn-primary" style="font-size:18px;padding:14px 28px;white-space:nowrap;border:none;cursor:pointer" onclick="saveEmail()">PLAY FREE →</button>
     </div>
     <p style="font-size:12px;color:var(--muted);margin-top:16px">No credit card. No KYC. Free forever.</p>
   </div>
@@ -608,12 +609,45 @@ footer {
   </div>
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-function saveEmail() {
-  const email = document.getElementById('cta-email').value;
-  if (email && email.includes('@')) {
-    localStorage.setItem('traders_email', email);
+const sb = supabase.createClient(
+  'https://wvltsxiuehzgumzwqucx.supabase.co',
+  'sb_publishable_77h-pibjPD4qoXJfx_YpKQ_XbKbbe97'
+);
+
+// Check if logged in and update nav
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  const link = document.getElementById('nav-auth-link');
+  if(session && link) {
+    const { data: profile } = await sb.from('profiles').select('username').eq('id', session.user.id).single();
+    const name = profile?.username || session.user.email?.split('@')[0] || 'Account';
+    link.textContent = '👤 ' + name;
+    link.style.color = 'var(--up)';
   }
+})();
+
+async function saveEmail() {
+  const email = document.getElementById('cta-email').value.trim();
+  if(!email || !email.includes('@')) return;
+
+  // Send magic link — this creates the account and sends welcome email
+  const { error } = await sb.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: 'https://traders.io/auth.html' }
+  });
+
+  if(!error) {
+    // Show confirmation
+    const btn = document.querySelector('.email-row .btn-primary');
+    const input = document.getElementById('cta-email');
+    if(btn) { btn.textContent = '✓ Check your email!'; btn.style.background = 'var(--up)'; }
+    if(input) input.disabled = true;
+  }
+
+  // Also save to localStorage as fallback
+  localStorage.setItem('traders_email', email);
 }
 </script>
 </body>
