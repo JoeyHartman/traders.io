@@ -583,11 +583,8 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true,
-    storageKey: 'traders-io-auth',
+    detectSessionInUrl: false,
   },
-  realtime: { params: { eventsPerSecond: 0 } },
-  global: { fetch: (...args) => fetch(...args) },
 });
 
 // Current user (null = guest)
@@ -595,37 +592,32 @@ let currentUser = null;
 let currentProfile = null;
 
 async function initAuth() {
-  // Test if Supabase is reachable
-  try {
-    const testResp = await fetch('https://wvltsxiuehzgumzwqucx.supabase.co/auth/v1/settings', {
-      headers: { 'apikey': 'sb_publishable_77h-pibjPD4qoXJfx_YpKQ_XbKbbe97' }
-    });
-    console.log('Supabase reachable:', testResp.status);
-  } catch(e) {
-    console.log('Supabase fetch failed:', e.message);
-  }
-
-  // onAuthStateChange is more reliable than getSession with publishable keys
+  // Listen for auth state changes (fires on login/logout)
   sb.auth.onAuthStateChange(async (event, session) => {
+    console.log('Auth event:', event, session?.user?.email);
     if(session) {
       currentUser = session.user;
       const { data } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
       currentProfile = data;
-      updateAuthUI();
     } else {
       currentUser = null;
       currentProfile = null;
-      updateAuthUI();
     }
+    updateAuthUI();
   });
 
-  // Also try getSession as fallback for immediate UI update
-  const { data: { session } } = await sb.auth.getSession();
-  if(session) {
-    currentUser = session.user;
-    const { data } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
-    currentProfile = data;
-    updateAuthUI();
+  // getSession for immediate check on page load
+  try {
+    const { data, error } = await sb.auth.getSession();
+    console.log('getSession result:', data?.session?.user?.email, error);
+    if(data?.session) {
+      currentUser = data.session.user;
+      const { data: prof } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+      currentProfile = prof;
+      updateAuthUI();
+    }
+  } catch(e) {
+    console.log('getSession error:', e);
   }
 }
 

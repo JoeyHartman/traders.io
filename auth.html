@@ -522,7 +522,13 @@ input::placeholder { color: var(--muted); }
 <script>
 const SUPABASE_URL = 'https://wvltsxiuehzgumzwqucx.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_77h-pibjPD4qoXJfx_YpKQ_XbKbbe97';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
+});
 
 // Profile selections
 const selections = { style: null, exp: null, profit: null, referral: null };
