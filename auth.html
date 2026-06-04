@@ -432,6 +432,12 @@ input::placeholder { color: var(--muted); }
     <div class="step-title">Your trading profile</div>
     <div class="step-sub">Help us personalise your battles. All optional — skip anytime.</div>
 
+    <label>Username <span style="color:var(--muted);font-weight:400;text-transform:none">— shown on leaderboard</span></label>
+    <input type="text" id="username-input" placeholder="e.g. TigerTrader" maxlength="20"
+      style="margin-bottom:6px;"
+      oninput="sanitizeUsername(this)">
+    <div id="username-hint" style="font-size:10px;color:var(--muted);margin-bottom:14px;">Letters, numbers and underscores only. Max 20 chars.</div>
+
     <label>Trading style</label>
     <div class="options three" id="style-opts">
       <button class="opt-btn" data-val="scalper" onclick="selectOpt(this,'style')">
@@ -576,6 +582,10 @@ async function sendMagicLink() {
   }
 }
 
+function sanitizeUsername(input) {
+  input.value = input.value.replace(/[^a-zA-Z0-9_]/g, '');
+}
+
 function selectOpt(btn, group) {
   const container = btn.closest('.options');
   container.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('selected'));
@@ -605,19 +615,23 @@ async function saveProfile() {
   const { data: { session } } = await sb.auth.getSession();
   if(!session) { goToBattle(); return; }
 
+  const username = document.getElementById('username-input').value.trim();
   const twitter  = document.getElementById('twitter-input').value.trim();
   const refDetail = document.getElementById('referral-detail-input').value.trim();
   const refSource = selections.referral
     ? (refDetail ? selections.referral + ':' + refDetail : selections.referral)
     : null;
 
-  const { error } = await sb.from('profiles').update({
+  const updateData = {
     trading_style:   selections.style,
     experience:      selections.exp,
     profitable:      selections.profit,
     twitter_handle:  twitter || null,
     referral_source: refSource,
-  }).eq('id', session.user.id);
+  };
+  if(username) updateData.username = username;
+
+  const { error } = await sb.from('profiles').update(updateData).eq('id', session.user.id);
 
   if(error) { showToast(error.message, true); return; }
 

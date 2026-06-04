@@ -7,6 +7,7 @@
 <title>Traders.io — Battle Arena</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,600;0,700;0,800;0,900;1,700&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
 <script src="charting_library/charting_library.standalone.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
   --bg:      #06090f;
@@ -380,6 +381,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--fm);font-size:13px
     <div class="nav-info">
       <span>🟢 <strong id="online-count">847</strong> online</span>
       <span>🏆 <strong id="player-coins">500</strong> coins</span>
+      <span id="auth-nav">
+        <a href="auth.html" style="color:var(--muted);text-decoration:none;font-size:11px;" id="auth-link">Sign in</a>
+      </span>
     </div>
   </div>
 
@@ -571,6 +575,63 @@ body{background:var(--bg);color:var(--text);font-family:var(--fm);font-size:13px
 
 <script>
 // ════════════════════════════════════════════════════
+// SUPABASE
+// ════════════════════════════════════════════════════
+const SUPABASE_URL = 'https://wvltsxiuehzgumzwqucx.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_77h-pibjPD4qoXJfx_YpKQ_XbKbbe97';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Current user (null = guest)
+let currentUser = null;
+let currentProfile = null;
+
+async function initAuth() {
+  const { data: { session } } = await sb.auth.getSession();
+  if(session) {
+    currentUser = session.user;
+    const { data } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+    currentProfile = data;
+    // Update UI with username
+    const authLink = document.getElementById('auth-link');
+    if(authLink) {
+      const name = currentProfile?.username || currentUser.email?.split('@')[0] || 'Account';
+      authLink.textContent = '👤 ' + name;
+      authLink.href = '#';
+      authLink.onclick = async (e) => {
+        e.preventDefault();
+        await sb.auth.signOut();
+        window.location.href = 'auth.html';
+      };
+    }
+  }
+  // Guests can play — no redirect needed
+}
+
+async function saveBattleResult(outcome, barsUsed) {
+  if(!currentUser) return; // guest — don't save
+  const isLongR = state.tpPrice > state.entryPrice;
+  const slD = Math.abs(state.entryPrice - state.slPrice);
+  const tpD = Math.abs(state.tpPrice - state.entryPrice);
+  const rr  = slD > 0 ? parseFloat((tpD/slD).toFixed(2)) : 1;
+  const myPips = outcome === 'win'
+    ? pips(state.symbol, tpD)
+    : -pips(state.symbol, slD);
+
+  await sb.from('battles').insert({
+    user_id:     currentUser.id,
+    result:      outcome,
+    symbol:      state.symbol,
+    entry_tf:    state.entryTF,
+    direction:   isLongR ? 'buy' : 'sell',
+    entry_price: state.entryPrice,
+    sl_price:    state.slPrice,
+    tp_price:    state.tpPrice,
+    rr_ratio:    rr,
+    pips:        myPips,
+  });
+}
+
+// ════════════════════════════════════════════════════
 // CONFIG
 // ════════════════════════════════════════════════════
 const CFG = {
@@ -690,7 +751,8 @@ function selectPair(el, sym, pair) {
   el.classList.add('active');
 }
 
-function goLobby() { showScreen('lobby'); }
+function goLobby() { showScreen('lobby');
+initAuth(); }
 
 // ════════════════════════════════════════════════════
 // DATA LOADING
@@ -1638,6 +1700,8 @@ function startReplay() {
 function endBattle(outcome, barsUsed) {
   state.phase = 'done';
   const won = outcome === 'win';
+  // Save to Supabase (async, non-blocking)
+  saveBattleResult(outcome, barsUsed);
   const slD = Math.abs(state.entryPrice - state.slPrice);
   const tpD = Math.abs(state.tpPrice - state.entryPrice);
   const rr  = slD > 0 ? (tpD/slD).toFixed(1) : '1';
