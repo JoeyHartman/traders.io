@@ -586,21 +586,43 @@ let currentUser = null;
 let currentProfile = null;
 
 async function initAuth() {
+  // onAuthStateChange is more reliable than getSession with publishable keys
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if(session) {
+      currentUser = session.user;
+      const { data } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+      currentProfile = data;
+      updateAuthUI();
+    } else {
+      currentUser = null;
+      currentProfile = null;
+      updateAuthUI();
+    }
+  });
+
+  // Also try getSession as fallback for immediate UI update
   const { data: { session } } = await sb.auth.getSession();
   if(session) {
     currentUser = session.user;
     const { data } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
     currentProfile = data;
-    // Update UI with username — link goes to auth.html for account management
-    const authLink = document.getElementById('auth-link');
-    if(authLink) {
-      const name = currentProfile?.username || currentUser.email?.split('@')[0] || 'Account';
-      authLink.textContent = '👤 ' + name;
-      authLink.href = 'auth.html';
-      authLink.style.color = 'var(--up)';
-    }
+    updateAuthUI();
   }
-  // Guests can play — no redirect needed
+}
+
+function updateAuthUI() {
+  const authLink = document.getElementById('auth-link');
+  if(!authLink) return;
+  if(currentUser) {
+    const name = currentProfile?.username || currentUser.email?.split('@')[0] || 'Account';
+    authLink.textContent = '👤 ' + name;
+    authLink.href = 'auth.html';
+    authLink.style.color = 'var(--up)';
+  } else {
+    authLink.textContent = 'Sign in';
+    authLink.href = 'auth.html';
+    authLink.style.color = '';
+  }
 }
 
 async function saveBattleResult(outcome, barsUsed) {
@@ -747,8 +769,7 @@ function selectPair(el, sym, pair) {
   el.classList.add('active');
 }
 
-function goLobby() { showScreen('lobby');
-initAuth(); }
+function goLobby() { showScreen('lobby'); }
 
 // ════════════════════════════════════════════════════
 // DATA LOADING
@@ -1769,6 +1790,7 @@ setInterval(() => {
 // INIT
 // ════════════════════════════════════════════════════
 selectCategory('daytrading', document.querySelector('.cat-card.daytrading'));
+initAuth();
 </script>
 </body>
 </html>
