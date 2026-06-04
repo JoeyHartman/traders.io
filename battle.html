@@ -579,13 +579,32 @@ body{background:var(--bg);color:var(--text);font-family:var(--fm);font-size:13px
 // ════════════════════════════════════════════════════
 const SUPABASE_URL = 'https://wvltsxiuehzgumzwqucx.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_77h-pibjPD4qoXJfx_YpKQ_XbKbbe97';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storageKey: 'traders-io-auth',
+  },
+  realtime: { params: { eventsPerSecond: 0 } },
+  global: { fetch: (...args) => fetch(...args) },
+});
 
 // Current user (null = guest)
 let currentUser = null;
 let currentProfile = null;
 
 async function initAuth() {
+  // Test if Supabase is reachable
+  try {
+    const testResp = await fetch('https://wvltsxiuehzgumzwqucx.supabase.co/auth/v1/settings', {
+      headers: { 'apikey': 'sb_publishable_77h-pibjPD4qoXJfx_YpKQ_XbKbbe97' }
+    });
+    console.log('Supabase reachable:', testResp.status);
+  } catch(e) {
+    console.log('Supabase fetch failed:', e.message);
+  }
+
   // onAuthStateChange is more reliable than getSession with publishable keys
   sb.auth.onAuthStateChange(async (event, session) => {
     if(session) {
