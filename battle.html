@@ -622,18 +622,22 @@ async function initAuth() {
 }
 
 function updateAuthUI() {
-  const authLink = document.getElementById('auth-link');
-  if(!authLink) return;
-  if(currentUser) {
-    const name = currentProfile?.username || currentUser.email?.split('@')[0] || 'Account';
-    authLink.textContent = '👤 ' + name;
-    authLink.href = 'auth.html';
-    authLink.style.color = 'var(--up)';
-  } else {
-    authLink.textContent = 'Sign in';
-    authLink.href = 'auth.html';
-    authLink.style.color = '';
-  }
+  // Retry until DOM element exists (auth fires before DOM ready sometimes)
+  const tryUpdate = () => {
+    const authLink = document.getElementById('auth-link');
+    if(!authLink) { setTimeout(tryUpdate, 100); return; }
+    if(currentUser) {
+      const name = currentProfile?.username || currentUser.email?.split('@')[0] || 'Account';
+      authLink.textContent = '👤 ' + name;
+      authLink.href = 'auth.html';
+      authLink.style.color = 'var(--up)';
+    } else {
+      authLink.textContent = 'Sign in';
+      authLink.href = 'auth.html';
+      authLink.style.color = '';
+    }
+  };
+  tryUpdate();
 }
 
 async function saveBattleResult(outcome, barsUsed) {
