@@ -544,9 +544,20 @@ async function init() {
     const { data: { session: newSession } } = await sb.auth.getSession();
     if(newSession) {
       const { data: profile } = await sb.from('profiles').select('*').eq('id', newSession.user.id).single();
-      document.getElementById('welcome-name').textContent = profile?.username || 'Trader';
-      goToStep('profile');
       history.replaceState(null, '', window.location.pathname);
+      if(profile && profile.trading_style) {
+        // Returning user — show welcome back screen
+        showLoggedInScreen(newSession, profile);
+      } else {
+        // New user — show profile setup
+        document.getElementById('welcome-name').textContent = profile?.username || 'Trader';
+        // Pre-fill username if exists
+        if(profile?.username) {
+          const uInput = document.getElementById('username-input');
+          if(uInput) uInput.value = profile.username;
+        }
+        goToStep('profile');
+      }
       return;
     }
   }

@@ -622,22 +622,18 @@ async function initAuth() {
 }
 
 function updateAuthUI() {
-  // Retry until DOM element exists (auth fires before DOM ready sometimes)
-  const tryUpdate = () => {
-    const authLink = document.getElementById('auth-link');
-    if(!authLink) { setTimeout(tryUpdate, 100); return; }
-    if(currentUser) {
-      const name = currentProfile?.username || currentUser.email?.split('@')[0] || 'Account';
-      authLink.textContent = '👤 ' + name;
-      authLink.href = 'auth.html';
-      authLink.style.color = 'var(--up)';
-    } else {
-      authLink.textContent = 'Sign in';
-      authLink.href = 'auth.html';
-      authLink.style.color = '';
-    }
-  };
-  tryUpdate();
+  const authLink = document.getElementById('auth-link');
+  if(!authLink) return;
+  if(currentUser) {
+    const name = currentProfile?.username || currentUser.email?.split('@')[0] || 'Account';
+    authLink.textContent = '👤 ' + name;
+    authLink.href = 'auth.html';
+    authLink.style.color = 'var(--up)';
+  } else {
+    authLink.textContent = 'Sign in';
+    authLink.href = 'auth.html';
+    authLink.style.color = '';
+  }
 }
 
 async function saveBattleResult(outcome, barsUsed) {
@@ -1805,7 +1801,10 @@ setInterval(() => {
 // INIT
 // ════════════════════════════════════════════════════
 selectCategory('daytrading', document.querySelector('.cat-card.daytrading'));
-initAuth();
+// Wait for DOM to be fully ready before auth check
+document.addEventListener('DOMContentLoaded', () => initAuth());
+// Also call immediately in case DOMContentLoaded already fired
+if(document.readyState === 'complete' || document.readyState === 'interactive') initAuth();
 </script>
 </body>
 </html>
