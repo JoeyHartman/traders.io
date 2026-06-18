@@ -221,6 +221,63 @@ body{background:var(--bg);color:var(--text);font-family:var(--fm);font-size:13px
   flex-wrap:wrap;
 }
 
+.round-indicator{
+  font-family:var(--fd);font-size:11px;font-weight:700;
+  letter-spacing:0.15em;color:var(--muted);margin-top:2px;
+}
+
+.btn-notrade{
+  padding:0 16px;height:38px;border:1px solid var(--muted);border-radius:6px;
+  background:transparent;color:var(--muted);font-family:var(--fd);
+  font-size:13px;font-weight:700;letter-spacing:0.08em;cursor:pointer;
+  transition:all 0.15s;white-space:nowrap;
+}
+.btn-notrade:hover,.btn-notrade.active{
+  border-color:var(--gold);color:var(--gold);background:rgba(255,215,64,0.08);
+}
+
+/* Round score screen */
+.round-score-header{text-align:center;margin-bottom:24px;}
+.round-score-label{font-family:var(--fd);font-size:14px;font-weight:700;letter-spacing:0.2em;color:var(--muted);margin-bottom:6px;}
+.round-score-match{font-family:var(--fd);font-size:48px;font-weight:900;letter-spacing:0.05em;color:var(--text);}
+
+.round-score-card{
+  background:var(--surface);border:1px solid var(--border2);border-radius:12px;
+  padding:24px;margin-bottom:20px;width:100%;max-width:420px;
+}
+.rs-quality-score{text-align:center;margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--border);}
+.rs-qs-label{font-size:10px;letter-spacing:0.15em;color:var(--muted);margin-bottom:6px;}
+.rs-qs-val{font-family:var(--fd);font-size:64px;font-weight:900;color:var(--accent);line-height:1;}
+.rs-qs-sub{font-size:11px;color:var(--muted);margin-top:6px;}
+
+.rs-breakdown{margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--border);}
+.rs-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:12px;}
+.rs-row .rs-key{color:var(--muted);}
+.rs-row .rs-val{font-weight:600;color:var(--text);}
+.rs-row-total .rs-key{color:var(--text);font-weight:600;}
+.rs-row-total .rs-val{color:var(--accent);font-family:var(--fd);font-size:16px;font-weight:700;}
+
+.rs-vs{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.rs-vs-player{text-align:center;flex:1;}
+.rs-vs-name{font-size:11px;color:var(--muted);margin-bottom:4px;}
+.rs-vs-score{font-family:var(--fd);font-size:36px;font-weight:900;}
+.rs-vs-score.you{color:var(--accent);}
+.rs-vs-score.opp{color:var(--muted);}
+.rs-vs-sep{font-family:var(--fd);font-size:16px;color:var(--muted);padding:0 12px;}
+
+.rs-winner-tag{
+  text-align:center;font-family:var(--fd);font-size:13px;font-weight:700;
+  letter-spacing:0.1em;padding:8px;border-radius:6px;
+}
+.rs-winner-tag.win{background:rgba(0,230,118,0.1);color:var(--up);}
+.rs-winner-tag.loss{background:rgba(255,61,90,0.1);color:var(--down);}
+.rs-winner-tag.draw{background:rgba(255,215,64,0.1);color:var(--gold);}
+
+.rs-wins-bar{display:flex;gap:8px;justify-content:center;margin-bottom:24px;}
+.rs-win-dot{width:32px;height:8px;border-radius:4px;background:var(--border2);transition:background 0.3s;}
+.rs-win-dot.you-win{background:var(--up);}
+.rs-win-dot.opp-win{background:var(--down);}
+
 .sltp-instruction{
   font-family:var(--fd);font-size:16px;font-weight:700;
   letter-spacing:0.05em;color:var(--muted);flex:1;
@@ -463,6 +520,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--fm);font-size:13px
     <div class="phase-block">
       <div class="phase-timer t-analyse" id="phase-timer">4:00</div>
       <div class="phase-label" id="phase-label">ANALYSE</div>
+      <div class="round-indicator" id="round-indicator">RD 1/3</div>
     </div>
 
     <div style="display:flex;align-items:center;gap:12px">
@@ -525,6 +583,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--fm);font-size:13px
           <div class="sltp-stat-label">R:R</div>
           <div class="sltp-stat-val rr" id="rr-val">—</div>
         </div>
+        <button class="action-btn btn-notrade" id="notrade-btn" onclick="lockInNoTrade()">NO TRADE</button>
         <button class="action-btn btn-lock" id="lock-btn" onclick="lockIn()" disabled>LOCK IN ⚡</button>
       </div>
     </div>
@@ -540,6 +599,63 @@ body{background:var(--bg);color:var(--text);font-family:var(--fm);font-size:13px
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- ══ ROUND SCORE ══ -->
+<div id="screen-roundscore" class="screen">
+  <div class="result-inner">
+    <div class="round-score-header">
+      <div class="round-score-label" id="rs-round-label">ROUND 1 COMPLETE</div>
+      <div class="round-score-match" id="rs-match-score">1 — 0</div>
+    </div>
+
+    <div class="round-score-card" id="rs-card">
+      <div class="rs-quality-score">
+        <div class="rs-qs-label">YOUR QUALITY SCORE</div>
+        <div class="rs-qs-val" id="rs-qs-val">82</div>
+        <div class="rs-qs-sub" id="rs-qs-sub">+2R trade · clean entry</div>
+      </div>
+
+      <div class="rs-breakdown">
+        <div class="rs-row">
+          <span class="rs-key">Result</span>
+          <span class="rs-val" id="rs-result">TP Hit ✓</span>
+        </div>
+        <div class="rs-row">
+          <span class="rs-key">R-result</span>
+          <span class="rs-val" id="rs-r-result">+1.8R</span>
+        </div>
+        <div class="rs-row">
+          <span class="rs-key">Drawdown penalty</span>
+          <span class="rs-val" id="rs-drawdown">-3 pts</span>
+        </div>
+        <div class="rs-row rs-row-total">
+          <span class="rs-key">Quality Score</span>
+          <span class="rs-val" id="rs-quality">79 / 100</span>
+        </div>
+      </div>
+
+      <div class="rs-vs">
+        <div class="rs-vs-player">
+          <div class="rs-vs-name">You</div>
+          <div class="rs-vs-score you" id="rs-you-score">79</div>
+        </div>
+        <div class="rs-vs-sep">VS</div>
+        <div class="rs-vs-player">
+          <div class="rs-vs-name" id="rs-opp-name">Opponent</div>
+          <div class="rs-vs-score opp" id="rs-opp-score">65</div>
+        </div>
+      </div>
+
+      <div class="rs-winner-tag" id="rs-winner-tag">YOU WIN THIS ROUND ✓</div>
+    </div>
+
+    <div class="rs-wins-bar" id="rs-wins-bar">
+      <!-- Filled dynamically -->
+    </div>
+
+    <button class="btn-rematch" id="rs-next-btn" onclick="startNextRound()">NEXT ROUND →</button>
   </div>
 </div>
 
@@ -704,6 +820,7 @@ const state = {
   entryPrice: null,
   slPrice:    null,
   tpPrice:    null,
+  noTrade:    false,      // player chose no-trade this round
   locked:     false,
   phase:      'analyse',  // analyse|lockin|replay|done
   timerVal:   240,
@@ -712,6 +829,13 @@ const state = {
   replayCandles: [],
   battleCount: 0,
   lastResult: null,
+  // Best-of-3 round tracking
+  roundsTotal:   3,       // best-of-3 by default
+  roundCurrent:  1,
+  roundWins:     0,       // player round wins
+  oppRoundWins:  0,       // opponent round wins
+  roundScores:   [],      // quality scores per round
+  matchDone:     false,
   // TV
   tvWidget:   null,
   currentTF:  '15',
@@ -722,6 +846,120 @@ const state = {
   // Opponents (simulated)
   opponents:  [],
 };
+
+// ════════════════════════════════════════════════════
+// QUALITY SCORE ENGINE
+// ════════════════════════════════════════════════════
+
+function calculateATR(candles, period = 14) {
+  if(!candles || candles.length < period) return 0.001;
+  let sum = 0;
+  for(let i = candles.length - period; i < candles.length; i++) {
+    sum += candles[i].h - candles[i].l;
+  }
+  return sum / period;
+}
+
+function validateTrade(direction, entry, sl, tp, atr) {
+  if(atr <= 0) return { valid: false, reason: 'Invalid ATR' };
+  const risk   = Math.abs(entry - sl);
+  const reward = Math.abs(tp - entry);
+  const rr     = reward / risk;
+
+  if(direction === 'long') {
+    if(tp <= entry) return { valid: false, reason: 'Long TP must be above entry' };
+    if(sl >= entry) return { valid: false, reason: 'Long SL must be below entry' };
+  } else {
+    if(tp >= entry) return { valid: false, reason: 'Short TP must be below entry' };
+    if(sl <= entry) return { valid: false, reason: 'Short SL must be above entry' };
+  }
+  if(risk < 0.15 * atr) return { valid: false, reason: 'Stop too tight' };
+  if(risk > 5.0  * atr) return { valid: false, reason: 'Stop too wide' };
+  if(rr  > 6)           return { valid: false, reason: 'R:R too high (max 6)' };
+  return { valid: true };
+}
+
+function calculateRResult(direction, entry, sl, tp, candles) {
+  const risk    = Math.abs(entry - sl);
+  let hitSL     = false, hitTP = false, rResult = 0;
+  let maeR      = 0; // max adverse excursion in R
+
+  for(const c of candles) {
+    // Track MAE (how far did it go against us before outcome?)
+    if(!hitSL && !hitTP) {
+      const adverse = direction === 'long'
+        ? Math.max(0, entry - c.l)
+        : Math.max(0, c.h - entry);
+      maeR = Math.max(maeR, adverse / risk);
+    }
+
+    // SL and TP in same candle → conservative: SL first
+    if(direction === 'long') {
+      if(c.l <= sl && c.h >= tp) { hitSL = true; break; }
+      if(c.h >= tp)              { hitTP = true; break; }
+      if(c.l <= sl)              { hitSL = true; break; }
+    } else {
+      if(c.h >= sl && c.l <= tp) { hitSL = true; break; }
+      if(c.l <= tp)              { hitTP = true; break; }
+      if(c.h >= sl)              { hitSL = true; break; }
+    }
+  }
+
+  if(hitTP) {
+    rResult = Math.abs(tp - entry) / risk;
+  } else if(hitSL) {
+    rResult = -1;
+  } else {
+    // Time expired — use last close
+    const lastClose = candles[candles.length - 1]?.c || entry;
+    rResult = direction === 'long'
+      ? (lastClose - entry) / risk
+      : (entry - lastClose) / risk;
+  }
+
+  return { hitSL, hitTP, rResult, maeR };
+}
+
+function mapNegativeRToScore(r) {
+  if(r <= -1)    return 10;
+  if(r <= -0.75) return 20;
+  if(r <= -0.5)  return 25;
+  if(r <= -0.25) return 30;
+  return 35;
+}
+
+function calculateDrawdownPenalty(maeR) {
+  if(maeR <= 0.25) return 0;
+  if(maeR <= 0.50) return 3;
+  if(maeR <= 0.75) return 7;
+  if(maeR < 1.00)  return 12;
+  return 0; // stop loss hit → penalty already captured in base score
+}
+
+function calculateQualityScore({ direction, entry, sl, tp, candlesBefore, candlesAfter }) {
+  if(direction === 'no_trade') return { score: 30, rResult: null, hitSL: false, hitTP: false, maeR: 0, drawdownPenalty: 0 };
+
+  const atr = calculateATR(candlesBefore);
+  const validation = validateTrade(direction, entry, sl, tp, atr);
+  if(!validation.valid) return { score: 0, rResult: null, hitSL: false, hitTP: false, maeR: 0, drawdownPenalty: 0, invalidReason: validation.reason };
+
+  const { hitSL, hitTP, rResult, maeR } = calculateRResult(direction, entry, sl, tp, candlesAfter);
+
+  let baseScore;
+  if(hitSL) {
+    return { score: 10, rResult: -1, hitSL: true, hitTP: false, maeR, drawdownPenalty: 0 };
+  } else if(rResult < 0)   { baseScore = mapNegativeRToScore(rResult); }
+  else if(rResult === 0)   { baseScore = 40; }
+  else if(rResult < 0.5)   { baseScore = 55; }
+  else if(rResult < 1.0)   { baseScore = 70; }
+  else if(rResult < 2.0)   { baseScore = 82; }
+  else if(rResult < 3.0)   { baseScore = 92; }
+  else                      { baseScore = 100; }
+
+  const drawdownPenalty = calculateDrawdownPenalty(maeR);
+  const score = Math.max(0, Math.min(100, baseScore - drawdownPenalty));
+  return { score, rResult, hitSL, hitTP, maeR, drawdownPenalty };
+}
 
 // ════════════════════════════════════════════════════
 // UTILS
@@ -1393,8 +1631,16 @@ async function findMatch() {
 function startBattle() {
   state.battleCount++;
   state.entryPrice = null; state.slPrice = null; state.tpPrice = null;
+  state.noTrade    = false;
   state.locked     = false; state.phase = 'analyse';
   state.replayIdx  = 0; state.lastResult = null;
+  // Reset round tracking for new match
+  state.roundCurrent  = 1;
+  state.roundWins     = 0;
+  state.oppRoundWins  = 0;
+  state.roundScores   = [];
+  state.matchDone     = false;
+  state.roundsTotal   = 3; // best-of-3
   removeOrderLines();
 
   // Pick cursor for entry TF
@@ -1434,6 +1680,11 @@ function startBattle() {
   document.getElementById('heatmap-legend').style.display = 'none';
   // sltp-instruction removed from HTML — inputs replace it
   buildPlayersBar();
+  document.getElementById('round-indicator').textContent = `RD ${state.roundCurrent}/${state.roundsTotal}`;
+
+  // Reset no-trade button
+  const ntBtn = document.getElementById('notrade-btn');
+  if(ntBtn) { ntBtn.classList.remove('active'); ntBtn.textContent = 'NO TRADE'; }
 
   showScreen('battle');
 
@@ -1536,9 +1787,26 @@ function updateTimer() {
   }
 }
 
+function lockInNoTrade() {
+  if(state.locked) return;
+  state.noTrade = true;
+  // Set dummy prices so lockIn doesn't complain
+  const bars = getDataForTF(state.entryTF);
+  const lastBar = bars[tfCursor(state.entryTF) - 1] || { c: 1.0 };
+  const p = lastBar.c;
+  const pip = CFG.PIP[state.symbol] * 20;
+  state.entryPrice = p;
+  state.slPrice    = p - pip;
+  state.tpPrice    = p + pip;
+  // Visual feedback
+  document.getElementById('notrade-btn').classList.add('active');
+  document.getElementById('notrade-btn').textContent = '✓ NO TRADE';
+  lockIn();
+}
+
 function lockIn() {
   if(state.locked) return;
-  if(!state.entryPrice || !state.slPrice || !state.tpPrice) {
+  if(!state.noTrade && (!state.entryPrice || !state.slPrice || !state.tpPrice)) {
     showToast('Set Entry, SL and TP first!'); return;
   }
   state.locked = true;
@@ -1723,65 +1991,225 @@ function startReplay() {
 }
 
 // ════════════════════════════════════════════════════
-// END BATTLE
+// END ROUND / END BATTLE
 // ════════════════════════════════════════════════════
 function endBattle(outcome, barsUsed) {
   state.phase = 'done';
-  const won = outcome === 'win';
-  // Save to Supabase (async, non-blocking)
-  saveBattleResult(outcome, barsUsed);
-  const slD = Math.abs(state.entryPrice - state.slPrice);
-  const tpD = Math.abs(state.tpPrice - state.entryPrice);
-  const rr  = slD > 0 ? (tpD/slD).toFixed(1) : '1';
-  const myPips = won ? pips(state.symbol, tpD) : -pips(state.symbol, slD);
+  
+  // ── Calculate player quality score ──
+  const direction = state.noTrade ? 'no_trade'
+    : (state.tpPrice > state.entryPrice ? 'long' : 'short');
 
-  if(won) { state.player.wins++; state.player.coins += 100; }
-  else    { state.player.losses++; state.player.coins = Math.max(0, state.player.coins-50); }
+  const bars = getDataForTF(state.entryTF);
+  const candlesBefore = bars.slice(Math.max(0, state.cursorIndex - 50), state.cursorIndex);
+  const candlesAfter  = state.replayCandles;
+
+  const qResult = calculateQualityScore({
+    direction,
+    entry: state.entryPrice,
+    sl:    state.slPrice,
+    tp:    state.tpPrice,
+    candlesBefore,
+    candlesAfter,
+  });
+
+  // ── Simulate opponent quality score ──
+  const oppScore = 20 + Math.random() * 60; // random 20–80 for MVP
+  const oppName  = state.opponents[0]?.name || 'Opponent';
+
+  // ── Determine round winner ──
+  let roundWinner; // 'you', 'opp', 'draw'
+  if(qResult.score > oppScore + 0.5)       roundWinner = 'you';
+  else if(oppScore > qResult.score + 0.5)  roundWinner = 'opp';
+  else                                      roundWinner = 'draw';
+
+  if(roundWinner === 'you')        { state.roundWins++; }
+  else if(roundWinner === 'opp')   { state.oppRoundWins++; }
+  else { state.roundWins += 0.5; state.oppRoundWins += 0.5; }
+
+  state.roundScores.push({ you: qResult.score, opp: oppScore, winner: roundWinner });
+
+  // ── Check if match is over ──
+  const needed = Math.ceil(state.roundsTotal / 2) + (state.roundsTotal % 2 === 0 ? 0 : 0);
+  const winsNeeded = Math.ceil((state.roundsTotal + 1) / 2); // e.g. 2 for best-of-3
+  const matchOver  = state.roundWins >= winsNeeded || state.oppRoundWins >= winsNeeded
+    || state.roundCurrent >= state.roundsTotal;
+
+  // ── Show round score screen ──
+  showRoundScore(qResult, oppScore, oppName, roundWinner, matchOver, outcome);
+
+  // Save to Supabase only on final round
+  if(matchOver) saveBattleResult(state.roundWins > state.oppRoundWins ? 'win' : 'loss', barsUsed);
+}
+
+function showRoundScore(qResult, oppScore, oppName, roundWinner, matchOver, rawOutcome) {
+  // Round label
+  document.getElementById('rs-round-label').textContent =
+    `ROUND ${state.roundCurrent} / ${state.roundsTotal} COMPLETE`;
+
+  // Match score
+  document.getElementById('rs-match-score').textContent =
+    `${state.roundWins % 1 === 0 ? state.roundWins : state.roundWins.toFixed(1)} — ${state.oppRoundWins % 1 === 0 ? state.oppRoundWins : state.oppRoundWins.toFixed(1)}`;
+
+  // Quality score
+  document.getElementById('rs-qs-val').textContent = qResult.score;
+  document.getElementById('rs-qs-val').style.color =
+    qResult.score >= 70 ? 'var(--up)' : qResult.score >= 40 ? 'var(--gold)' : 'var(--down)';
+
+  // Sub label
+  let subLabel = '';
+  if(qResult.score === 30 && state.noTrade) subLabel = 'No trade taken';
+  else if(qResult.hitSL)   subLabel = 'Stop loss hit';
+  else if(qResult.hitTP)   subLabel = `TP hit · +${qResult.rResult?.toFixed(1)}R`;
+  else if(qResult.rResult != null) subLabel = `Closed at ${qResult.rResult?.toFixed(2)}R`;
+  else subLabel = '—';
+  document.getElementById('rs-qs-sub').textContent = subLabel;
+
+  // Breakdown
+  document.getElementById('rs-result').textContent =
+    qResult.hitTP ? '✓ TP Hit' : qResult.hitSL ? '✗ SL Hit' : rawOutcome === 'open' ? '⏱ Open' : '—';
+  document.getElementById('rs-result').style.color =
+    qResult.hitTP ? 'var(--up)' : qResult.hitSL ? 'var(--down)' : 'var(--gold)';
+
+  document.getElementById('rs-r-result').textContent =
+    qResult.rResult != null ? (qResult.rResult >= 0 ? '+' : '') + qResult.rResult?.toFixed(2) + 'R' : 'N/A';
+  document.getElementById('rs-r-result').style.color =
+    qResult.rResult > 0 ? 'var(--up)' : qResult.rResult < 0 ? 'var(--down)' : 'var(--text)';
+
+  document.getElementById('rs-drawdown').textContent =
+    qResult.drawdownPenalty > 0 ? `-${qResult.drawdownPenalty} pts` : '0 pts';
+  document.getElementById('rs-drawdown').style.color =
+    qResult.drawdownPenalty > 0 ? 'var(--down)' : 'var(--muted)';
+
+  document.getElementById('rs-quality').textContent = `${qResult.score} / 100`;
+
+  // VS scores
+  document.getElementById('rs-you-score').textContent = qResult.score;
+  document.getElementById('rs-opp-name').textContent  = oppName;
+  document.getElementById('rs-opp-score').textContent = Math.round(oppScore);
+
+  // Winner tag
+  const tag = document.getElementById('rs-winner-tag');
+  if(roundWinner === 'you')      { tag.textContent = 'YOU WIN THIS ROUND ✓'; tag.className = 'rs-winner-tag win'; }
+  else if(roundWinner === 'opp') { tag.textContent = 'OPPONENT WINS THIS ROUND'; tag.className = 'rs-winner-tag loss'; }
+  else                           { tag.textContent = 'ROUND DRAW'; tag.className = 'rs-winner-tag draw'; }
+
+  // Wins bar (shows round-by-round history)
+  const bar = document.getElementById('rs-wins-bar');
+  bar.innerHTML = Array.from({length: state.roundsTotal}, (_, i) => {
+    const rd = state.roundScores[i];
+    if(!rd) return `<div class="rs-win-dot"></div>`;
+    if(rd.winner === 'you')  return `<div class="rs-win-dot you-win" title="Round ${i+1}: You"></div>`;
+    if(rd.winner === 'opp')  return `<div class="rs-win-dot opp-win" title="Round ${i+1}: Opp"></div>`;
+    return `<div class="rs-win-dot" style="background:var(--gold)" title="Round ${i+1}: Draw"></div>`;
+  }).join('');
+
+  // Next button
+  const nextBtn = document.getElementById('rs-next-btn');
+  if(matchOver) {
+    const matchWon = state.roundWins > state.oppRoundWins;
+    const matchDraw = state.roundWins === state.oppRoundWins;
+    nextBtn.textContent = matchWon ? '🏆 SEE FINAL RESULT →' : matchDraw ? 'SEE FINAL RESULT →' : '😔 SEE FINAL RESULT →';
+    nextBtn.onclick = () => showFinalResult();
+  } else {
+    nextBtn.textContent = `ROUND ${state.roundCurrent + 1} →`;
+    nextBtn.onclick = () => startNextRound();
+  }
+
+  showScreen('roundscore');
+}
+
+function startNextRound() {
+  state.roundCurrent++;
+  state.entryPrice = null; state.slPrice = null; state.tpPrice = null;
+  state.noTrade    = false;
+  state.locked     = false; state.phase = 'analyse';
+  state.replayIdx  = 0;
+  removeOrderLines();
+
+  // Reset no-trade button
+  const ntBtn = document.getElementById('notrade-btn');
+  if(ntBtn) { ntBtn.classList.remove('active'); ntBtn.textContent = 'NO TRADE'; }
+
+  // New cursor position
+  state.cursorIndex = pickCursor(state.entryTF);
+  const entryBars = getDataForTF(state.entryTF);
+  state.replayCandles = entryBars.slice(state.cursorIndex, state.cursorIndex + CFG.MAX_BARS);
+
+  // Update round indicator
+  document.getElementById('round-indicator').textContent = `RD ${state.roundCurrent}/${state.roundsTotal}`;
+
+  // Reset UI
+  document.getElementById('b-entry').textContent = '—';
+  document.getElementById('b-sl').textContent    = 'not set';
+  document.getElementById('b-tp').textContent    = 'not set';
+  document.getElementById('b-rr').textContent    = '—';
+  document.getElementById('b-pnl').textContent   = '—';
+  document.getElementById('sl-pips').textContent = '— pips';
+  document.getElementById('tp-pips').textContent = '— pips';
+  document.getElementById('rr-val').textContent  = '—';
+  document.getElementById('lock-btn').disabled   = true;
+  document.getElementById('sltp-area').style.display     = 'flex';
+  document.getElementById('locked-display').style.display = 'none';
+  document.getElementById('replay-bar').style.display    = 'none';
+  document.getElementById('replay-fill').style.width     = '0%';
+  document.getElementById('heatmap-legend').style.display = 'none';
+  document.getElementById('phase-fill').className        = 'phase-progress-fill fill-analyse';
+
+  showScreen('battle');
+
+  requestAnimationFrame(() => {
+    // Reinit TV chart for new scenario
+    initTV();
+    startAnalyseTimer();
+    initOrderLines();
+  });
+}
+
+function showFinalResult() {
+  const matchWon  = state.roundWins > state.oppRoundWins;
+  const matchDraw = state.roundWins === state.oppRoundWins;
+  const outcome   = matchWon ? 'win' : matchDraw ? 'open' : 'loss';
+
+  const totalQ    = state.roundScores.reduce((s,r) => s + r.you, 0);
+  const avgQ      = state.roundScores.length ? Math.round(totalQ / state.roundScores.length) : 0;
+
+  if(matchWon) { state.player.wins++; state.player.coins += 150; }
+  else if(!matchDraw) { state.player.losses++; state.player.coins = Math.max(0, state.player.coins - 50); }
   document.getElementById('player-coins').textContent = state.player.coins;
 
-  // Build arena results
-  const results = [
-    { name:'You', outcome, rr, pips: myPips, you: true },
-    ...state.opponents.map(o => {
-      const oPipVal = Math.random() > 0.5
-        ? pips(state.symbol, Math.abs(o.tp - state.entryPrice))
-        : -pips(state.symbol, Math.abs(o.sl - state.entryPrice));
-      const oOutcome = oPipVal > 0 ? 'win' : 'loss';
-      return { name: o.name, outcome: oOutcome, rr: o.rr, pips: oPipVal, you: false };
-    })
-  ];
-  results.sort((a,b) => {
-    if(a.outcome==='win' && b.outcome!=='win') return -1;
-    if(b.outcome==='win' && a.outcome!=='win') return 1;
-    return parseFloat(b.rr) - parseFloat(a.rr);
-  });
-  const myRank = results.findIndex(r=>r.you) + 1;
-
-  // Result screen
   const badge = document.getElementById('r-badge');
-  badge.textContent = won ? 'WIN' : outcome==='open' ? 'OPEN' : 'LOSS';
-  badge.className   = 'result-badge ' + (won?'badge-win':outcome==='open'?'badge-open':'badge-loss');
+  badge.textContent = matchWon ? 'WIN' : matchDraw ? 'DRAW' : 'LOSS';
+  badge.className   = 'result-badge ' + (matchWon ? 'badge-win' : matchDraw ? 'badge-open' : 'badge-loss');
 
   document.getElementById('r-detail').innerHTML =
-    `<strong>${state.pair}</strong> — ${barsUsed} bars replayed · Entry: ${fmt(state.symbol, state.entryPrice)}`;
-  document.getElementById('r-outcome').textContent = won ? 'TP Hit ✓' : outcome==='open'?'Still Open':'SL Hit ✗';
-  document.getElementById('r-outcome').style.color = won?'var(--up)':outcome==='open'?'var(--gold)':'var(--down)';
-  document.getElementById('r-rr').textContent = '1:' + rr;
-  document.getElementById('r-pips').textContent = (myPips>=0?'+':'') + myPips;
-  document.getElementById('r-pips').style.color = myPips>=0?'var(--up)':'var(--down)';
-  document.getElementById('r-rank').textContent  = '#' + myRank + ' / ' + state.format;
+    `<strong>${state.pair}</strong> · ${state.roundCurrent} rounds · Best-of-${state.roundsTotal}`;
+  document.getElementById('r-outcome').textContent =
+    `${state.roundWins} — ${state.oppRoundWins} rounds`;
+  document.getElementById('r-outcome').style.color = matchWon ? 'var(--up)' : matchDraw ? 'var(--gold)' : 'var(--down)';
+  document.getElementById('r-rr').textContent = `${avgQ}/100`;
+  document.getElementById('r-pips').textContent = matchWon ? '+150 coins' : matchDraw ? '—' : '-50 coins';
+  document.getElementById('r-pips').style.color = matchWon ? 'var(--up)' : 'var(--down)';
+  document.getElementById('r-rank').textContent = matchWon ? '#1 / 2' : '#2 / 2';
 
-  // Board
+  // Board — show round-by-round
   const rankEmojis = ['🥇','🥈','🥉'];
-  document.getElementById('board-rows').innerHTML = results.map((r,i) => `
-    <div class="board-row ${r.you?'you':''}">
-      <div class="board-rank ${i<3?'r'+(i+1):''}">${i<3?rankEmojis[i]:i+1}</div>
-      <div>${r.you?'<strong>You</strong>':r.name}</div>
-      <div class="board-outcome ${r.outcome}">${r.outcome==='win'?'✓ TP':r.outcome==='loss'?'✗ SL':'⏱ Open'}</div>
-      <div style="color:var(--gold)">1:${r.rr}</div>
-      <div style="color:${r.pips>=0?'var(--up)':'var(--down)'}">${r.pips>=0?'+':''}${r.pips}</div>
+  const oppName = state.opponents[0]?.name || 'Opponent';
+  document.getElementById('board-rows').innerHTML = state.roundScores.map((rd, i) => `
+    <div class="board-row">
+      <div class="board-rank">${i+1}</div>
+      <div>Round ${i+1}</div>
+      <div class="board-outcome ${rd.winner === 'you' ? 'win' : rd.winner === 'opp' ? 'loss' : ''}">
+        ${rd.winner === 'you' ? '✓ You' : rd.winner === 'opp' ? `✗ ${oppName}` : '= Draw'}
+      </div>
+      <div style="color:var(--accent)">${rd.you}</div>
+      <div style="color:var(--muted)">${Math.round(rd.opp)}</div>
     </div>
   `).join('');
+
+  // Update board header
+  document.querySelector('.board-head').innerHTML =
+    '<div>#</div><div>Round</div><div>Winner</div><div>Your QS</div><div>Opp QS</div>';
 
   showScreen('result');
 }
