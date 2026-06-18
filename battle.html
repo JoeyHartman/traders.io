@@ -1702,7 +1702,7 @@ function generateOpponents() {
     name:   names[i % names.length],
     locked: false,
     lockTime: Math.random() * 160 + 20, // lock in between 20-180s (within analyse phase)
-    sl:     null, tp: null, rr: null, outcome: null, pips: 0,
+    sl:     null, tp: null, rr: null, isLong: null, outcome: null, pips: 0,
   }));
 }
 
@@ -1845,7 +1845,71 @@ function lockIn() {
 function checkAllLocked() {
   if(!state.locked) return; // player hasn't locked yet
   const allLocked = state.opponents.every(o => o.locked);
-  if(allLocked) startReplay();
+  if(!allLocked) return;
+
+  // 1v1 only: reveal opponent position before replay
+  if(state.format === 1) {
+    startRevealPhase();
+  } else {
+    startReplay();
+  }
+}
+
+function startRevealPhase() {
+  // Generate opponent position now (so we can show it)
+  const pip = CFG.PIP[state.symbol];
+  const opp = state.opponents[0];
+  const slPips = (10 + Math.random() * 30) * pip;
+  const tpPips = slPips * (1 + Math.random() * 2);
+  // Random direction — 50/50
+  const oppIsLong = Math.random() > 0.5;
+  opp.sl = oppIsLong ? state.entryPrice - slPips : state.entryPrice + slPips;
+  opp.tp = oppIsLong ? state.entryPrice + tpPips : state.entryPrice - tpPips;
+  opp.rr = (tpPips / slPips).toFixed(1);
+  opp.isLong = oppIsLong;
+
+  // Show opponent lines on chart
+  const chart = state.tvWidget?.chart();
+  const oppColor = '#a855f7'; // purple for opponent
+  const oppEntryLine = chart?.createShape({ price: state.entryPrice }, {
+    shape: 'horizontal_line', disableSelection: true, disableSave: true, lock: true,
+    overrides: { linecolor: oppColor, linewidth: 1, linestyle: 2,
+      showLabel: true, text: `${opp.name} ENTRY`, textcolor: oppColor,
+      horzLabelsAlign: 'left', fontsize: 11 }
+  });
+  const oppSlLine = chart?.createShape({ price: opp.sl }, {
+    shape: 'horizontal_line', disableSelection: true, disableSave: true, lock: true,
+    overrides: { linecolor: '#ff3d5a', linewidth: 1, linestyle: 2,
+      showLabel: true, text: `${opp.name} SL`, textcolor: '#ff3d5a',
+      horzLabelsAlign: 'left', fontsize: 11 }
+  });
+  const oppTpLine = chart?.createShape({ price: opp.tp }, {
+    shape: 'horizontal_line', disableSelection: true, disableSave: true, lock: true,
+    overrides: { linecolor: '#00e676', linewidth: 1, linestyle: 2,
+      showLabel: true, text: `${opp.name} TP`, textcolor: '#00e676',
+      horzLabelsAlign: 'left', fontsize: 11 }
+  });
+
+  // Update phase label
+  document.getElementById('phase-label').textContent = 'REVEAL';
+  document.getElementById('phase-timer').textContent = '5';
+  document.getElementById('phase-timer').className = 'phase-timer t-lockin';
+  document.getElementById('phase-fill').className = 'phase-progress-fill fill-lockin';
+
+  showToast(`👀 ${opp.name}'s position revealed — replay starts in 5s`, 5000);
+
+  // Count down 5 seconds then start replay
+  let countdown = 5;
+  const revealInterval = setInterval(() => {
+    countdown--;
+    document.getElementById('phase-timer').textContent = countdown;
+    if(countdown <= 0) {
+      clearInterval(revealInterval);
+      // Remove opponent lines (they'll be shown again during replay)
+      try { chart?.removeAllShapes(); } catch(e) {}
+      startReplay();
+    }
+  }, 1000);
 }
 
 function autoLockIn() {
@@ -1870,9 +1934,10 @@ function startReplay() {
   document.getElementById('phase-fill').className = 'phase-progress-fill fill-replay';
   document.getElementById('replay-bar').style.display = 'block';
 
-  // Assign opponent SL/TP relative to entry price
+  // Assign opponent SL/TP (skip if already set by reveal phase)
   const pip = CFG.PIP[state.symbol];
   state.opponents.forEach(opp => {
+    if(opp.sl != null) return; // already set by reveal phase
     const slPips = (10 + Math.random() * 30) * pip;
     const tpPips = slPips * (1 + Math.random() * 2);
     opp.sl = state.entryPrice - slPips;
@@ -1909,6 +1974,13 @@ function startReplay() {
     sl:    addReplayLine(state.slPrice,    '#ff3d5a', 'SL'),
     tp:    addReplayLine(state.tpPrice,    '#00e676', 'TP'),
   };
+
+  // 1v1: also show opponent lines during replay (dashed, purple/subdued)
+  if(state.format === 1 && state.opponents[0]?.sl != null) {
+    const opp = state.opponents[0];
+    addReplayLine(opp.sl, 'rgba(255,61,90,0.45)', `${opp.name} SL`);
+    addReplayLine(opp.tp, 'rgba(0,230,118,0.45)', `${opp.name} TP`);
+  }
 
   function playNext() {
     if(i >= candles.length || i >= CFG.MAX_BARS) {
